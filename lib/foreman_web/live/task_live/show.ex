@@ -271,9 +271,10 @@ defmodule ForemanWeb.TaskLive.Show do
           true -> ""
         end
 
-      assigns = %{class: class, line: line}
-      ~H"<span class={@class}>{@line}</span>"
+      escaped = line |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
+      "<span class=\"#{class}\">#{escaped}</span>"
     end)
-    |> Enum.intersperse(Phoenix.HTML.raw("\n"))
+    |> Enum.join("\n")
+    |> Phoenix.HTML.raw()
   end
 end
