@@ -136,7 +136,7 @@ defmodule ForemanWeb.ProjectLive.Show do
 
       <%!-- New Task Modal --%>
       <%= if @task_changeset do %>
-        <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" phx-click="cancel_new_task">
+        <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg" phx-click-away="cancel_new_task">
             <h2 class="text-lg font-semibold mb-4">New Task</h2>
             <.form for={@task_changeset} phx-submit="save_task" class="space-y-4">
