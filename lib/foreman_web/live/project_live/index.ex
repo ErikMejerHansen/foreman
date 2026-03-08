@@ -55,7 +55,10 @@ defmodule ForemanWeb.ProjectLive.Index do
     <div class="max-w-4xl mx-auto py-8">
       <div class="flex justify-between items-center mb-8">
         <h1 class="text-2xl font-bold">Foreman</h1>
-        <.link patch={~p"/projects/new"} class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+        <.link
+          patch={~p"/projects/new"}
+          class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
           New Project
         </.link>
       </div>
@@ -66,15 +69,25 @@ defmodule ForemanWeb.ProjectLive.Index do
           <.form for={@changeset} phx-submit="save" class="space-y-4">
             <div>
               <label class="block text-sm font-medium text-gray-700">Name</label>
-              <input type="text" name="project[name]" value={@changeset.changes[:name] || ""}
-                     class="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                     placeholder="My Project" required />
+              <input
+                type="text"
+                name="project[name]"
+                value={@changeset.changes[:name] || ""}
+                class="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                placeholder="My Project"
+                required
+              />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700">Repository Path</label>
-              <input type="text" name="project[repo_path]" value={@changeset.changes[:repo_path] || ""}
-                     class="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                     placeholder="/path/to/git/repo" required />
+              <input
+                type="text"
+                name="project[repo_path]"
+                value={@changeset.changes[:repo_path] || ""}
+                class="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                placeholder="/path/to/git/repo"
+                required
+              />
             </div>
             <div class="flex gap-2">
               <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
@@ -96,12 +109,15 @@ defmodule ForemanWeb.ProjectLive.Index do
           <div class="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow">
             <div class="flex justify-between items-center">
               <.link navigate={~p"/projects/#{project.id}"} class="flex-1">
-                <h2 class="text-lg font-semibold"><%= project.name %></h2>
-                <p class="text-sm text-gray-500 mt-1 font-mono"><%= project.repo_path %></p>
+                <h2 class="text-lg font-semibold">{project.name}</h2>
+                <p class="text-sm text-gray-500 mt-1 font-mono">{project.repo_path}</p>
               </.link>
-              <button phx-click="delete" phx-value-id={project.id}
-                      data-confirm="Delete this project?"
-                      class="text-red-500 hover:text-red-700 text-sm ml-4">
+              <button
+                phx-click="delete"
+                phx-value-id={project.id}
+                data-confirm="Delete this project?"
+                class="text-red-500 hover:text-red-700 text-sm ml-4"
+              >
                 Delete
               </button>
             </div>

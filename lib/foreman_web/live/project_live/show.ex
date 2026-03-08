@@ -125,11 +125,16 @@ defmodule ForemanWeb.ProjectLive.Show do
       <%!-- Header --%>
       <div class="bg-white border-b px-6 py-4 flex justify-between items-center">
         <div class="flex items-center gap-4">
-          <.link navigate={~p"/projects"} class="text-gray-500 hover:text-gray-700">&larr; Projects</.link>
-          <h1 class="text-xl font-bold"><%= @project.name %></h1>
-          <span class="text-sm text-gray-500 font-mono"><%= @project.repo_path %></span>
+          <.link navigate={~p"/projects"} class="text-gray-500 hover:text-gray-700">
+            &larr; Projects
+          </.link>
+          <h1 class="text-xl font-bold">{@project.name}</h1>
+          <span class="text-sm text-gray-500 font-mono">{@project.repo_path}</span>
         </div>
-        <button phx-click="new_task" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm">
+        <button
+          phx-click="new_task"
+          class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm"
+        >
           + New Task
         </button>
       </div>
@@ -137,26 +142,45 @@ defmodule ForemanWeb.ProjectLive.Show do
       <%!-- New Task Modal --%>
       <%= if @task_changeset do %>
         <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg" phx-click-away="cancel_new_task">
+          <div
+            class="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg"
+            phx-click-away="cancel_new_task"
+          >
             <h2 class="text-lg font-semibold mb-4">New Task</h2>
             <.form for={@task_changeset} phx-submit="save_task" class="space-y-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700">Title</label>
-                <input type="text" name="task[title]" value=""
-                       class="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                       placeholder="Fix login bug" required />
+                <input
+                  type="text"
+                  name="task[title]"
+                  value=""
+                  class="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  placeholder="Fix login bug"
+                  required
+                />
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700">Instructions</label>
-                <textarea name="task[instructions]" rows="6"
-                          class="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                          placeholder="Describe what the agent should do..." required></textarea>
+                <textarea
+                  name="task[instructions]"
+                  rows="6"
+                  class="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  placeholder="Describe what the agent should do..."
+                  required
+                ></textarea>
               </div>
               <div class="flex gap-2 justify-end">
-                <button type="button" phx-click="cancel_new_task" class="px-4 py-2 rounded border hover:bg-gray-50">
+                <button
+                  type="button"
+                  phx-click="cancel_new_task"
+                  class="px-4 py-2 rounded border hover:bg-gray-50"
+                >
                   Cancel
                 </button>
-                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                <button
+                  type="submit"
+                  class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                >
                   Create Task
                 </button>
               </div>
@@ -172,27 +196,31 @@ defmodule ForemanWeb.ProjectLive.Show do
             <div class={"flex flex-col w-80 rounded-lg border #{status_color(status)}"}>
               <%!-- Column Header --%>
               <div class="px-4 py-3 border-b font-semibold text-sm flex items-center gap-2">
-                <span><%= status_icon(status) %></span>
-                <span><%= status_label(status) %></span>
+                <span>{status_icon(status)}</span>
+                <span>{status_label(status)}</span>
                 <span class="ml-auto bg-white/50 px-2 py-0.5 rounded-full text-xs">
-                  <%= length(tasks_by_status(@tasks, status)) %>
+                  {length(tasks_by_status(@tasks, status))}
                 </span>
               </div>
 
               <%!-- Cards --%>
-              <div class="flex-1 overflow-y-auto p-2 space-y-2"
-                   id={"column-#{status}"}
-                   phx-hook="Sortable"
-                   data-status={status}>
+              <div
+                class="flex-1 overflow-y-auto p-2 space-y-2"
+                id={"column-#{status}"}
+                phx-hook="Sortable"
+                data-status={status}
+              >
                 <%= for task <- tasks_by_status(@tasks, status) do %>
-                  <div class="bg-white rounded-lg shadow-sm border p-3 cursor-pointer hover:shadow-md transition-shadow"
-                       id={"task-#{task.id}"}
-                       data-task-id={task.id}>
+                  <div
+                    class="bg-white rounded-lg shadow-sm border p-3 cursor-pointer hover:shadow-md transition-shadow"
+                    id={"task-#{task.id}"}
+                    data-task-id={task.id}
+                  >
                     <.link navigate={~p"/projects/#{@project.id}/tasks/#{task.id}"} class="block">
-                      <h3 class="font-medium text-sm"><%= task.title %></h3>
-                      <p class="text-xs text-gray-500 mt-1 line-clamp-2"><%= task.instructions %></p>
+                      <h3 class="font-medium text-sm">{task.title}</h3>
+                      <p class="text-xs text-gray-500 mt-1 line-clamp-2">{task.instructions}</p>
                       <%= if task.branch_name do %>
-                        <p class="text-xs text-blue-600 mt-2 font-mono"><%= task.branch_name %></p>
+                        <p class="text-xs text-blue-600 mt-2 font-mono">{task.branch_name}</p>
                       <% end %>
                     </.link>
                   </div>
