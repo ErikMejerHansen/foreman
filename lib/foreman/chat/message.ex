@@ -1,0 +1,25 @@
+defmodule Foreman.Chat.Message do
+  use Ecto.Schema
+  import Ecto.Changeset
+
+  @primary_key {:id, :binary_id, autogenerate: true}
+  @foreign_key_type :binary_id
+
+  @roles ~w(user assistant system)
+
+  schema "messages" do
+    field :role, :string
+    field :content, :string
+
+    belongs_to :task, Foreman.Tasks.Task
+
+    timestamps()
+  end
+
+  def changeset(message, attrs) do
+    message
+    |> cast(attrs, [:role, :content, :task_id])
+    |> validate_required([:role, :content, :task_id])
+    |> validate_inclusion(:role, @roles)
+  end
+end
