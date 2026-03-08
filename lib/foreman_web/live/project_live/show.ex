@@ -88,6 +88,20 @@ defmodule ForemanWeb.ProjectLive.Show do
   end
 
   @impl true
+  def handle_event("delete_task", %{"id" => task_id}, socket) do
+    task = Tasks.get_task!(task_id)
+
+    case Tasks.delete_task(task) do
+      {:ok, _task} ->
+        tasks = Tasks.list_tasks_for_project(socket.assigns.project.id)
+        {:noreply, assign(socket, :tasks, tasks)}
+
+      {:error, reason} ->
+        {:noreply, put_flash(socket, :error, "#{reason}")}
+    end
+  end
+
+  @impl true
   def handle_info({:task_created, _task}, socket) do
     tasks = Tasks.list_tasks_for_project(socket.assigns.project.id)
     {:noreply, assign(socket, :tasks, tasks)}
@@ -95,6 +109,12 @@ defmodule ForemanWeb.ProjectLive.Show do
 
   @impl true
   def handle_info({:task_updated, _task}, socket) do
+    tasks = Tasks.list_tasks_for_project(socket.assigns.project.id)
+    {:noreply, assign(socket, :tasks, tasks)}
+  end
+
+  @impl true
+  def handle_info({:task_deleted, _task}, socket) do
     tasks = Tasks.list_tasks_for_project(socket.assigns.project.id)
     {:noreply, assign(socket, :tasks, tasks)}
   end
@@ -212,10 +232,18 @@ defmodule ForemanWeb.ProjectLive.Show do
               >
                 <%= for task <- tasks_by_status(@tasks, status) do %>
                   <div
-                    class="bg-base-100 rounded-lg shadow-sm border border-base-300 p-3 cursor-pointer hover:shadow-md transition-shadow"
+                    class="bg-base-100 rounded-lg shadow-sm border border-base-300 p-3 cursor-pointer hover:shadow-md transition-shadow group relative"
                     id={"task-#{task.id}"}
                     data-task-id={task.id}
                   >
+                    <button
+                      phx-click="delete_task"
+                      phx-value-id={task.id}
+                      data-confirm="Delete this task?"
+                      class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-base-content/40 hover:text-error text-lg leading-none transition-opacity"
+                    >
+                      &times;
+                    </button>
                     <.link navigate={~p"/projects/#{@project.id}/tasks/#{task.id}"} class="block">
                       <h3 class="font-medium text-sm">{task.title}</h3>
                       <p class="text-xs text-base-content/60 mt-1 line-clamp-2">{task.instructions}</p>

@@ -138,6 +138,28 @@ defmodule Foreman.Tasks do
 
   def move_to_done(_task), do: {:error, "Can only move to done from review"}
 
+  def delete_task(%Task{} = task) do
+    case Agent.Supervisor.find_runner(task.id) do
+      nil -> :ok
+      pid -> GenServer.stop(pid, :normal)
+    end
+
+    if task.worktree_path && task.branch_name do
+      project = Foreman.Projects.get_project!(task.project_id)
+      Git.remove_worktree(project.repo_path, task.worktree_path)
+      Git.delete_branch(project.repo_path, task.branch_name)
+    end
+
+    case Repo.delete(task) do
+      {:ok, task} ->
+        broadcast_project(task.project_id, {:task_deleted, task})
+        {:ok, task}
+
+      error ->
+        error
+    end
+  end
+
   def update_session_id(task_id, session_id) do
     task = Repo.get!(Task, task_id)
 
