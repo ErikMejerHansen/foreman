@@ -118,10 +118,7 @@ defmodule Foreman.Tasks do
     project = Foreman.Projects.get_project!(task.project_id)
 
     # Stop the runner if still alive
-    case Agent.Supervisor.find_runner(task.id) do
-      nil -> :ok
-      pid -> GenServer.stop(pid, :normal)
-    end
+    Agent.Supervisor.stop_runner(task.id)
 
     with :ok <- Git.rebase_from_main(task.worktree_path),
          :ok <- Git.merge_to_main(project.repo_path, task.branch_name),
@@ -144,10 +141,7 @@ defmodule Foreman.Tasks do
   def move_to_done(_task), do: {:error, "Can only move to done from review"}
 
   def delete_task(%Task{} = task) do
-    case Agent.Supervisor.find_runner(task.id) do
-      nil -> :ok
-      pid -> GenServer.stop(pid, :normal)
-    end
+    Agent.Supervisor.stop_runner(task.id)
 
     if task.worktree_path && task.branch_name do
       project = Foreman.Projects.get_project!(task.project_id)
@@ -166,11 +160,10 @@ defmodule Foreman.Tasks do
   end
 
   def update_session_id(task_id, session_id) do
-    task = Repo.get!(Task, task_id)
+    from(t in Task, where: t.id == ^task_id)
+    |> Repo.update_all(set: [session_id: session_id])
 
-    task
-    |> Task.changeset(%{session_id: session_id})
-    |> Repo.update()
+    :ok
   end
 
   def send_feedback(%Task{status: "review"} = task, message) do
