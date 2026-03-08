@@ -103,10 +103,10 @@ defmodule ForemanWeb.ProjectLive.Show do
     Enum.filter(tasks, &(&1.status == status))
   end
 
-  defp status_color("todo"), do: "bg-gray-100 border-gray-300 dark:bg-gray-800 dark:border-gray-600"
-  defp status_color("in_progress"), do: "bg-blue-50 border-blue-300 dark:bg-blue-900/20 dark:border-blue-700"
-  defp status_color("review"), do: "bg-yellow-50 border-yellow-300 dark:bg-yellow-900/20 dark:border-yellow-700"
-  defp status_color("done"), do: "bg-green-50 border-green-300 dark:bg-green-900/20 dark:border-green-700"
+  defp status_color("todo"), do: "bg-base-200 border-base-300"
+  defp status_color("in_progress"), do: "bg-info/10 border-info/30"
+  defp status_color("review"), do: "bg-warning/10 border-warning/30"
+  defp status_color("done"), do: "bg-success/10 border-success/30"
 
   defp status_label("todo"), do: "To Do"
   defp status_label("in_progress"), do: "In Progress"
@@ -123,13 +123,13 @@ defmodule ForemanWeb.ProjectLive.Show do
     ~H"""
     <div class="h-screen flex flex-col">
       <%!-- Header --%>
-      <div class="bg-white dark:bg-gray-900 border-b dark:border-gray-700 px-6 py-4 flex justify-between items-center">
+      <div class="bg-base-100 border-b border-base-300 px-6 py-4 flex justify-between items-center">
         <div class="flex items-center gap-4">
-          <.link navigate={~p"/projects"} class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
+          <.link navigate={~p"/projects"} class="text-base-content/60 hover:text-base-content">
             &larr; Projects
           </.link>
           <h1 class="text-xl font-bold">{@project.name}</h1>
-          <span class="text-sm text-gray-500 dark:text-gray-400 font-mono">{@project.repo_path}</span>
+          <span class="text-sm text-base-content/60 font-mono">{@project.repo_path}</span>
         </div>
         <button
           phx-click="new_task"
@@ -143,28 +143,28 @@ defmodule ForemanWeb.ProjectLive.Show do
       <%= if @task_changeset do %>
         <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div
-            class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg"
+            class="bg-base-100 rounded-lg shadow-xl p-6 w-full max-w-lg"
             phx-click-away="cancel_new_task"
           >
             <h2 class="text-lg font-semibold mb-4">New Task</h2>
             <.form for={@task_changeset} phx-submit="save_task" class="space-y-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Title</label>
+                <label class="block text-sm font-medium text-base-content">Title</label>
                 <input
                   type="text"
                   name="task[title]"
                   value=""
-                  class="mt-1 block w-full rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  class="mt-1 block w-full rounded border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary"
                   placeholder="Fix login bug"
                   required
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Instructions</label>
+                <label class="block text-sm font-medium text-base-content">Instructions</label>
                 <textarea
                   name="task[instructions]"
                   rows="6"
-                  class="mt-1 block w-full rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  class="mt-1 block w-full rounded border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary"
                   placeholder="Describe what the agent should do..."
                   required
                 ></textarea>
@@ -173,7 +173,7 @@ defmodule ForemanWeb.ProjectLive.Show do
                 <button
                   type="button"
                   phx-click="cancel_new_task"
-                  class="px-4 py-2 rounded border hover:bg-gray-50 dark:hover:bg-gray-700 dark:border-gray-600"
+                  class="px-4 py-2 rounded border border-base-300 hover:bg-base-200"
                 >
                   Cancel
                 </button>
@@ -198,7 +198,7 @@ defmodule ForemanWeb.ProjectLive.Show do
               <div class="px-4 py-3 border-b font-semibold text-sm flex items-center gap-2">
                 <span>{status_icon(status)}</span>
                 <span>{status_label(status)}</span>
-                <span class="ml-auto bg-white/50 dark:bg-black/20 px-2 py-0.5 rounded-full text-xs">
+                <span class="ml-auto bg-base-100/50 px-2 py-0.5 rounded-full text-xs">
                   {length(tasks_by_status(@tasks, status))}
                 </span>
               </div>
@@ -212,15 +212,15 @@ defmodule ForemanWeb.ProjectLive.Show do
               >
                 <%= for task <- tasks_by_status(@tasks, status) do %>
                   <div
-                    class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-600 p-3 cursor-pointer hover:shadow-md transition-shadow"
+                    class="bg-base-100 rounded-lg shadow-sm border border-base-300 p-3 cursor-pointer hover:shadow-md transition-shadow"
                     id={"task-#{task.id}"}
                     data-task-id={task.id}
                   >
                     <.link navigate={~p"/projects/#{@project.id}/tasks/#{task.id}"} class="block">
                       <h3 class="font-medium text-sm">{task.title}</h3>
-                      <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{task.instructions}</p>
+                      <p class="text-xs text-base-content/60 mt-1 line-clamp-2">{task.instructions}</p>
                       <%= if task.branch_name do %>
-                        <p class="text-xs text-blue-600 dark:text-blue-400 mt-2 font-mono">{task.branch_name}</p>
+                        <p class="text-xs text-info mt-2 font-mono">{task.branch_name}</p>
                       <% end %>
                     </.link>
                   </div>

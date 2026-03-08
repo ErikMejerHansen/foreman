@@ -64,27 +64,27 @@ defmodule ForemanWeb.ProjectLive.Index do
       </div>
 
       <%= if @changeset do %>
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+        <div class="bg-base-100 rounded-lg shadow p-6 mb-6">
           <h2 class="text-lg font-semibold mb-4">New Project</h2>
           <.form for={@changeset} phx-submit="save" class="space-y-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
+              <label class="block text-sm font-medium text-base-content">Name</label>
               <input
                 type="text"
                 name="project[name]"
                 value={@changeset.changes[:name] || ""}
-                class="mt-1 block w-full rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                class="mt-1 block w-full rounded border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary"
                 placeholder="My Project"
                 required
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Repository Path</label>
+              <label class="block text-sm font-medium text-base-content">Repository Path</label>
               <input
                 type="text"
                 name="project[repo_path]"
                 value={@changeset.changes[:repo_path] || ""}
-                class="mt-1 block w-full rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                class="mt-1 block w-full rounded border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary"
                 placeholder="/path/to/git/repo"
                 required
               />
@@ -93,7 +93,7 @@ defmodule ForemanWeb.ProjectLive.Index do
               <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
                 Create
               </button>
-              <.link patch={~p"/projects"} class="px-4 py-2 rounded border hover:bg-gray-50 dark:hover:bg-gray-700 dark:border-gray-600">
+              <.link patch={~p"/projects"} class="px-4 py-2 rounded border border-base-300 hover:bg-base-200">
                 Cancel
               </.link>
             </div>
@@ -103,14 +103,14 @@ defmodule ForemanWeb.ProjectLive.Index do
 
       <div class="grid gap-4">
         <%= if @projects == [] do %>
-          <p class="text-gray-500 dark:text-gray-400 text-center py-12">No projects yet. Create one to get started.</p>
+          <p class="text-base-content/60 text-center py-12">No projects yet. Create one to get started.</p>
         <% end %>
         <%= for project <- @projects do %>
-          <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-md transition-shadow">
+          <div class="bg-base-100 rounded-lg shadow p-6 hover:shadow-md transition-shadow">
             <div class="flex justify-between items-center">
               <.link navigate={~p"/projects/#{project.id}"} class="flex-1">
                 <h2 class="text-lg font-semibold">{project.name}</h2>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 font-mono">{project.repo_path}</p>
+                <p class="text-sm text-base-content/60 mt-1 font-mono">{project.repo_path}</p>
               </.link>
               <button
                 phx-click="delete"
