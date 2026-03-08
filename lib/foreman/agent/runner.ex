@@ -242,8 +242,17 @@ defmodule Foreman.Agent.Runner do
 
     case Jason.decode(line) do
       {:ok, %{"type" => "assistant", "message" => %{"content" => content}}} ->
+        thinking = extract_thinking(content)
         text = extract_text(content)
         Logger.debug("Claude assistant message for task #{state.task_id}: #{String.slice(text, 0, 100)}")
+
+        if thinking != "" do
+          Foreman.Chat.create_message(%{
+            "task_id" => state.task_id,
+            "role" => "thinking",
+            "content" => thinking
+          })
+        end
 
         if text != "" do
           Foreman.Chat.create_message(%{
@@ -308,4 +317,13 @@ defmodule Foreman.Agent.Runner do
 
   defp extract_text(content) when is_binary(content), do: content
   defp extract_text(_), do: ""
+
+  defp extract_thinking(content) when is_list(content) do
+    content
+    |> Enum.filter(&(is_map(&1) && &1["type"] == "thinking"))
+    |> Enum.map(& &1["thinking"])
+    |> Enum.join("")
+  end
+
+  defp extract_thinking(_), do: ""
 end

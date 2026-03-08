@@ -257,6 +257,7 @@ defmodule ForemanWeb.TaskLive.Show do
   defp message_class("user"), do: "bg-info/10 border border-info/20 ml-8"
   defp message_class("assistant"), do: "bg-base-200 border border-base-300 mr-8"
   defp message_class("system"), do: "bg-warning/10 border border-warning/20 text-center"
+  defp message_class("thinking"), do: "bg-purple-500/10 border border-purple-500/20 mr-8 italic opacity-75"
   defp message_class(_), do: "bg-base-200 border border-base-300"
 
   defp colorize_diff(diff) do
