@@ -238,6 +238,8 @@ defmodule Foreman.Agent.Runner do
   end
 
   defp process_stream_line(state, line) do
+    Logger.debug("Claude raw message (task #{state.task_id}): #{line}")
+
     case Jason.decode(line) do
       {:ok, %{"type" => "assistant", "message" => %{"content" => content}}} ->
         text = extract_text(content)
