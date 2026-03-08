@@ -55,7 +55,7 @@ defmodule Foreman.Tasks do
 
   def move_to_in_progress(_task), do: {:error, "Cannot move to in_progress from current status"}
 
-  defp start_agent(task, branch_name, worktree_path) do
+  defp start_agent(task, branch_name, worktree_path, opts \\ []) do
     {:ok, task} =
       task
       |> Task.changeset(%{
@@ -65,12 +65,23 @@ defmodule Foreman.Tasks do
       })
       |> Repo.update()
 
-    Agent.Supervisor.start_runner(%{
-      task_id: task.id,
-      worktree_path: worktree_path,
-      instructions: task.instructions,
-      session_id: task.session_id
-    })
+    prompt = Keyword.get(opts, :prompt, task.instructions)
+    skip_chat_message = Keyword.get(opts, :skip_chat_message, false)
+
+    case Agent.Supervisor.start_runner(%{
+           task_id: task.id,
+           worktree_path: worktree_path,
+           prompt: prompt,
+           session_id: task.session_id,
+           skip_chat_message: skip_chat_message
+         }) do
+      {:ok, _pid} ->
+        :ok
+
+      {:error, reason} ->
+        require Logger
+        Logger.error("Failed to start agent runner for task #{task.id}: #{inspect(reason)}")
+    end
 
     broadcast_project(task.project_id, {:task_updated, task})
     {:ok, task}
@@ -116,21 +127,12 @@ defmodule Foreman.Tasks do
   end
 
   def send_feedback(%Task{status: "review"} = task, message) do
-    case Agent.Supervisor.find_runner(task.id) do
-      nil ->
-        # Runner not alive, start a new one with resume
-        move_to_in_progress(task)
-        # Wait briefly for runner to start, then send message
-        Process.sleep(500)
-
-        case Agent.Supervisor.find_runner(task.id) do
-          nil -> {:error, "Failed to start agent"}
-          pid -> Agent.Runner.send_message(pid, message)
-        end
-
-      pid ->
-        Agent.Runner.send_message(pid, message)
-    end
+    # Start a new runner with the feedback as the prompt and the session_id for resume.
+    # The LiveView already persisted the user message, so skip_chat_message: true.
+    start_agent(task, task.branch_name, task.worktree_path,
+      prompt: message,
+      skip_chat_message: true
+    )
   end
 
   def send_message_to_agent(%Task{status: "in_progress"} = task, message) do

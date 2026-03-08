@@ -24,7 +24,16 @@ defmodule Foreman.Tasks.Task do
 
   def changeset(task, attrs) do
     task
-    |> cast(attrs, [:title, :instructions, :status, :position, :branch_name, :worktree_path, :session_id, :project_id])
+    |> cast(attrs, [
+      :title,
+      :instructions,
+      :status,
+      :position,
+      :branch_name,
+      :worktree_path,
+      :session_id,
+      :project_id
+    ])
     |> validate_required([:title, :instructions, :project_id])
     |> validate_inclusion(:status, @statuses)
   end

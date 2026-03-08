@@ -17,7 +17,7 @@ defmodule Foreman.Agent.Runner do
   # Server callbacks
 
   @impl true
-  def init(%{task_id: task_id, worktree_path: worktree_path, instructions: instructions} = args) do
+  def init(%{task_id: task_id, worktree_path: worktree_path, prompt: prompt} = args) do
     state = %__MODULE__{
       task_id: task_id,
       worktree_path: worktree_path,
@@ -25,27 +25,59 @@ defmodule Foreman.Agent.Runner do
       buffer: ""
     }
 
+    Logger.info("Starting agent runner for task #{task_id} in #{worktree_path}")
+
+    # Post the prompt as a user message unless caller already did it
+    unless Map.get(args, :skip_chat_message, false) do
+      Foreman.Chat.create_message(%{
+        "task_id" => task_id,
+        "role" => "user",
+        "content" => prompt
+      })
+    end
+
     # Start the claude process
-    state = spawn_claude(state, instructions)
-    {:ok, state}
+    case find_claude() do
+      {:ok, claude_path} ->
+        state = spawn_claude(state, prompt, claude_path)
+        {:ok, state}
+
+      {:error, reason} ->
+        Logger.error("Cannot start agent for task #{task_id}: #{reason}")
+
+        Foreman.Chat.create_message(%{
+          "task_id" => task_id,
+          "role" => "system",
+          "content" => "Failed to start agent: #{reason}"
+        })
+
+        {:stop, reason}
+    end
   end
 
   @impl true
   def handle_cast({:send_message, message}, state) do
-    # Persist the user message
-    Foreman.Chat.create_message(%{
-      "task_id" => state.task_id,
-      "role" => "user",
-      "content" => message
-    })
+    # Note: user message is already persisted by the LiveView before calling this
 
     # If there's an existing port, close it first
     if state.port && Port.info(state.port) do
       Port.close(state.port)
     end
 
-    state = spawn_claude(state, message)
-    {:noreply, state}
+    case find_claude() do
+      {:ok, claude_path} ->
+        state = spawn_claude(state, message, claude_path)
+        {:noreply, state}
+
+      {:error, reason} ->
+        Foreman.Chat.create_message(%{
+          "task_id" => state.task_id,
+          "role" => "system",
+          "content" => "Failed to start agent: #{reason}"
+        })
+
+        {:noreply, %{state | port: nil}}
+    end
   end
 
   @impl true
@@ -113,17 +145,50 @@ defmodule Foreman.Agent.Runner do
 
   # Private
 
-  defp spawn_claude(state, prompt) do
-    claude_path = System.find_executable("claude") || raise "claude CLI not found in PATH"
+  defp find_claude do
+    # Check common locations since PATH may differ when running as a server
+    candidates = [
+      System.find_executable("claude"),
+      Path.expand("~/.claude/local/bin/claude"),
+      Path.expand("~/.local/bin/claude"),
+      "/usr/local/bin/claude",
+      "/opt/homebrew/bin/claude"
+    ]
 
+    case Enum.find(candidates, fn path -> path && File.exists?(path || "") end) do
+      nil -> {:error, "claude CLI not found in PATH or common locations"}
+      path -> {:ok, path}
+    end
+  end
+
+  defp spawn_claude(state, prompt, claude_path) do
     args =
       if state.session_id do
-        ["-p", prompt, "--resume", state.session_id, "--output-format", "stream-json",
-         "--verbose", "--allowedTools", "Bash,Read,Edit,Write,Glob,Grep"]
+        [
+          "-p",
+          prompt,
+          "--resume",
+          state.session_id,
+          "--output-format",
+          "stream-json",
+          "--verbose",
+          "--allowedTools",
+          "Bash,Read,Edit,Write,Glob,Grep"
+        ]
       else
-        ["-p", prompt, "--output-format", "stream-json",
-         "--verbose", "--allowedTools", "Bash,Read,Edit,Write,Glob,Grep"]
+        [
+          "-p",
+          prompt,
+          "--output-format",
+          "stream-json",
+          "--verbose",
+          "--allowedTools",
+          "Bash,Read,Edit,Write,Glob,Grep"
+        ]
       end
+
+    Logger.info("Spawning claude at #{claude_path} in #{state.worktree_path}")
+    Logger.debug("Claude args: #{inspect(args)}")
 
     port =
       Port.open({:spawn_executable, claude_path}, [
