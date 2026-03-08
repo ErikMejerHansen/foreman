@@ -49,7 +49,21 @@ defmodule Foreman.Tasks do
         {:error, reason} -> {:error, reason}
       end
     else
-      start_agent(task, task.branch_name, task.worktree_path)
+      # From review — reuse existing runner if alive
+      case Agent.Supervisor.find_runner(task.id) do
+        nil ->
+          start_agent(task, task.branch_name, task.worktree_path)
+
+        _pid ->
+          # Runner still alive, just update status
+          {:ok, task} =
+            task
+            |> Task.changeset(%{status: "in_progress"})
+            |> Repo.update()
+
+          broadcast_project(task.project_id, {:task_updated, task})
+          {:ok, task}
+      end
     end
   end
 
@@ -101,6 +115,12 @@ defmodule Foreman.Tasks do
   def move_to_done(%Task{status: "review"} = task) do
     project = Foreman.Projects.get_project!(task.project_id)
 
+    # Stop the runner if still alive
+    case Agent.Supervisor.find_runner(task.id) do
+      nil -> :ok
+      pid -> GenServer.stop(pid, :normal)
+    end
+
     with :ok <- Git.rebase_from_main(task.worktree_path),
          :ok <- Git.merge_to_main(project.repo_path, task.branch_name),
          :ok <- Git.remove_worktree(project.repo_path, task.worktree_path),
@@ -127,12 +147,36 @@ defmodule Foreman.Tasks do
   end
 
   def send_feedback(%Task{status: "review"} = task, message) do
-    # Start a new runner with the feedback as the prompt and the session_id for resume.
-    # The LiveView already persisted the user message, so skip_chat_message: true.
-    start_agent(task, task.branch_name, task.worktree_path,
-      prompt: message,
-      skip_chat_message: true
-    )
+    # Move task back to in_progress
+    {:ok, task} =
+      task
+      |> Task.changeset(%{status: "in_progress"})
+      |> Repo.update()
+
+    broadcast_project(task.project_id, {:task_updated, task})
+    broadcast_task(task.id, {:status_changed, "in_progress"})
+
+    # Reuse existing runner if alive (persistent session), otherwise start fresh
+    case Agent.Supervisor.find_runner(task.id) do
+      nil ->
+        # Runner died — start a new one with --resume
+        require Logger
+        Logger.info("Runner not found for task #{task.id}, starting new session with --resume")
+
+        Agent.Supervisor.start_runner(%{
+          task_id: task.id,
+          worktree_path: task.worktree_path,
+          prompt: message,
+          session_id: task.session_id,
+          skip_chat_message: true
+        })
+
+      pid ->
+        # Send feedback to the running agent via stdin
+        Agent.Runner.send_message(pid, message)
+    end
+
+    {:ok, task}
   end
 
   def send_message_to_agent(%Task{status: "in_progress"} = task, message) do

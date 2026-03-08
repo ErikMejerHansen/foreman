@@ -59,66 +59,82 @@ defmodule Foreman.Agent.Runner do
   def handle_cast({:send_message, message}, state) do
     # Note: user message is already persisted by the LiveView before calling this
 
-    # If there's an existing port, close it first
     if state.port && Port.info(state.port) do
-      Port.close(state.port)
-    end
-
-    case find_claude() do
-      {:ok, claude_path} ->
-        state = spawn_claude(state, message, claude_path)
-        {:noreply, state}
-
-      {:error, reason} ->
-        Foreman.Chat.create_message(%{
-          "task_id" => state.task_id,
-          "role" => "system",
-          "content" => "Failed to start agent: #{reason}"
+      # Send message to the running claude process via stdin (stream-json input)
+      json_message =
+        Jason.encode!(%{
+          "type" => "user",
+          "message" => %{
+            "role" => "user",
+            "content" => message
+          }
         })
 
-        {:noreply, %{state | port: nil}}
+      Port.command(state.port, json_message <> "\n")
+      Logger.info("Sent message to claude stdin for task #{state.task_id}")
+      {:noreply, state}
+    else
+      # Port is not running (process exited), start a new session with --resume
+      Logger.info("Port not running, starting new claude session for task #{state.task_id}")
+
+      case find_claude() do
+        {:ok, claude_path} ->
+          state = spawn_claude(state, message, claude_path)
+          {:noreply, state}
+
+        {:error, reason} ->
+          Foreman.Chat.create_message(%{
+            "task_id" => state.task_id,
+            "role" => "system",
+            "content" => "Failed to start agent: #{reason}"
+          })
+
+          {:noreply, %{state | port: nil}}
+      end
     end
   end
 
   @impl true
   def handle_info({port, {:data, data}}, %{port: port} = state) do
+    Logger.debug("Claude port data (#{byte_size(data)} bytes) for task #{state.task_id}")
+
     # Append to buffer and process complete lines
     buffer = state.buffer <> data
     {lines, remaining} = split_lines(buffer)
 
-    state = %{state | buffer: remaining}
-
-    Enum.each(lines, fn line ->
-      process_stream_line(state.task_id, line, state)
-    end)
+    state =
+      %{state | buffer: remaining}
+      |> process_lines(lines)
 
     {:noreply, state}
   end
 
   @impl true
   def handle_info({port, {:exit_status, 0}}, %{port: port} = state) do
-    Logger.info("Claude agent completed for task #{state.task_id}")
+    Logger.info("Claude process exited normally for task #{state.task_id}")
 
     # Flush remaining buffer
-    if state.buffer != "" do
-      process_stream_line(state.task_id, state.buffer, state)
-    end
-
-    # Move task to review
-    task = Foreman.Tasks.get_task!(state.task_id)
-    Foreman.Tasks.move_to_review(task)
+    state =
+      if state.buffer != "" do
+        process_lines(state, [state.buffer])
+      else
+        state
+      end
 
     {:noreply, %{state | port: nil, buffer: ""}}
   end
 
   @impl true
   def handle_info({port, {:exit_status, code}}, %{port: port} = state) do
-    Logger.error("Claude agent failed for task #{state.task_id} with exit code #{code}")
+    Logger.error("Claude process exited with code #{code} for task #{state.task_id}")
 
     # Flush remaining buffer
-    if state.buffer != "" do
-      process_stream_line(state.task_id, state.buffer, state)
-    end
+    state =
+      if state.buffer != "" do
+        process_lines(state, [state.buffer])
+      else
+        state
+      end
 
     Foreman.Chat.create_message(%{
       "task_id" => state.task_id,
@@ -163,28 +179,24 @@ defmodule Foreman.Agent.Runner do
 
   defp spawn_claude(state, prompt, claude_path) do
     args =
+      [
+        "-p",
+        prompt,
+        "--output-format",
+        "stream-json",
+        "--input-format",
+        "stream-json",
+        "--verbose",
+        "--allowedTools",
+        "Bash,Read,Edit,Write,Glob,Grep"
+      ]
+
+    # Add --resume if we have a session_id from a previous run
+    args =
       if state.session_id do
-        [
-          "-p",
-          prompt,
-          "--resume",
-          state.session_id,
-          "--output-format",
-          "stream-json",
-          "--verbose",
-          "--allowedTools",
-          "Bash,Read,Edit,Write,Glob,Grep"
-        ]
+        args ++ ["--resume", state.session_id]
       else
-        [
-          "-p",
-          prompt,
-          "--output-format",
-          "stream-json",
-          "--verbose",
-          "--allowedTools",
-          "Bash,Read,Edit,Write,Glob,Grep"
-        ]
+        args
       end
 
     Logger.info("Spawning claude at #{claude_path} in #{state.worktree_path}")
@@ -197,7 +209,11 @@ defmodule Foreman.Agent.Runner do
         :use_stdio,
         :stderr_to_stdout,
         {:cd, state.worktree_path},
-        {:args, args}
+        {:args, args},
+        {:env, [
+          # Clear CLAUDECODE so the spawned process doesn't think it's nested
+          {~c"CLAUDECODE", false}
+        ]}
       ])
 
     %{state | port: port}
@@ -216,40 +232,67 @@ defmodule Foreman.Agent.Runner do
     end
   end
 
-  defp process_stream_line(task_id, line, _state) do
+  defp process_lines(state, lines) do
+    Enum.reduce(lines, state, fn line, acc -> process_stream_line(acc, line) end)
+  end
+
+  defp process_stream_line(state, line) do
     case Jason.decode(line) do
       {:ok, %{"type" => "assistant", "message" => %{"content" => content}}} ->
         text = extract_text(content)
+        Logger.debug("Claude assistant message for task #{state.task_id}: #{String.slice(text, 0, 100)}")
 
         if text != "" do
           Foreman.Chat.create_message(%{
-            "task_id" => task_id,
+            "task_id" => state.task_id,
             "role" => "assistant",
             "content" => text
           })
         end
 
+        state
+
       {:ok, %{"type" => "result", "result" => result_text, "session_id" => session_id}} ->
-        Foreman.Tasks.update_session_id(task_id, session_id)
+        Logger.info("Claude result for task #{state.task_id}, session: #{session_id}")
+        Foreman.Tasks.update_session_id(state.task_id, session_id)
 
         if result_text && result_text != "" do
           Foreman.Chat.create_message(%{
-            "task_id" => task_id,
+            "task_id" => state.task_id,
             "role" => "assistant",
             "content" => result_text
           })
         end
 
+        # Move task to review — agent finished this turn
+        task = Foreman.Tasks.get_task!(state.task_id)
+        Foreman.Tasks.move_to_review(task)
+
+        %{state | session_id: session_id}
+
       {:ok, %{"type" => "result", "session_id" => session_id}} ->
-        Foreman.Tasks.update_session_id(task_id, session_id)
+        Logger.info("Claude result (no text) for task #{state.task_id}, session: #{session_id}")
+        Foreman.Tasks.update_session_id(state.task_id, session_id)
+
+        task = Foreman.Tasks.get_task!(state.task_id)
+        Foreman.Tasks.move_to_review(task)
+
+        %{state | session_id: session_id}
+
+      {:ok, %{"type" => type}} ->
+        Logger.debug("Claude event type=#{type} for task #{state.task_id}")
+        state
 
       {:ok, _other} ->
-        :ok
+        Logger.debug("Claude unknown event for task #{state.task_id}: #{String.slice(line, 0, 200)}")
+        state
 
-      {:error, _} ->
+      {:error, _error} ->
         if String.trim(line) != "" do
-          Logger.debug("Non-JSON output from claude: #{String.slice(line, 0, 200)}")
+          Logger.warning("Non-JSON from claude (task #{state.task_id}): #{String.slice(line, 0, 500)}")
         end
+
+        state
     end
   end
 
