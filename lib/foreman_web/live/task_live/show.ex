@@ -128,10 +128,10 @@ defmodule ForemanWeb.TaskLive.Show do
 
   defp load_diff(_project, _task), do: nil
 
-  defp status_badge_class("todo"), do: "bg-gray-100 text-gray-800"
-  defp status_badge_class("in_progress"), do: "bg-blue-100 text-blue-800"
-  defp status_badge_class("review"), do: "bg-yellow-100 text-yellow-800"
-  defp status_badge_class("done"), do: "bg-green-100 text-green-800"
+  defp status_badge_class("todo"), do: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+  defp status_badge_class("in_progress"), do: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
+  defp status_badge_class("review"), do: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+  defp status_badge_class("done"), do: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
 
   defp status_label("todo"), do: "To Do"
   defp status_label("in_progress"), do: "In Progress"
@@ -148,9 +148,9 @@ defmodule ForemanWeb.TaskLive.Show do
       <Layouts.flash_group flash={@flash} />
 
       <%!-- Header --%>
-      <div class="bg-white border-b px-6 py-4">
+      <div class="bg-white dark:bg-gray-900 border-b dark:border-gray-700 px-6 py-4">
         <div class="flex items-center gap-4">
-          <.link navigate={~p"/projects/#{@project.id}"} class="text-gray-500 hover:text-gray-700">
+          <.link navigate={~p"/projects/#{@project.id}"} class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
             &larr; Board
           </.link>
           <h1 class="text-xl font-bold">{@task.title}</h1>
@@ -158,7 +158,7 @@ defmodule ForemanWeb.TaskLive.Show do
             {status_label(@task.status)}
           </span>
           <%= if @task.branch_name do %>
-            <span class="text-sm text-blue-600 font-mono">{@task.branch_name}</span>
+            <span class="text-sm text-blue-600 dark:text-blue-400 font-mono">{@task.branch_name}</span>
           <% end %>
         </div>
       </div>
@@ -167,8 +167,8 @@ defmodule ForemanWeb.TaskLive.Show do
         <%!-- Left: Instructions + Chat --%>
         <div class="flex-1 flex flex-col border-r">
           <%!-- Instructions --%>
-          <div class="p-4 border-b bg-gray-50">
-            <h2 class="text-sm font-semibold text-gray-600 mb-2">Instructions</h2>
+          <div class="p-4 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+            <h2 class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Instructions</h2>
             <p class="text-sm whitespace-pre-wrap">{@task.instructions}</p>
             <%= if @task.status == "todo" do %>
               <button
@@ -183,7 +183,7 @@ defmodule ForemanWeb.TaskLive.Show do
           <%!-- Chat Messages --%>
           <div class="flex-1 overflow-y-auto p-4 space-y-3" id="chat-messages" phx-hook="ScrollBottom">
             <%= if @messages == [] && @task.status == "todo" do %>
-              <p class="text-gray-400 text-center py-8">
+              <p class="text-gray-400 dark:text-gray-500 text-center py-8">
                 Start this task to begin the conversation with the agent.
               </p>
             <% end %>
@@ -202,13 +202,13 @@ defmodule ForemanWeb.TaskLive.Show do
 
           <%!-- Chat Input --%>
           <%= if can_chat?(@task.status) do %>
-            <div class="p-4 border-t bg-white">
+            <div class="p-4 border-t dark:border-gray-700 bg-white dark:bg-gray-900">
               <form phx-submit="send_message" phx-change="update_message_input" class="flex gap-2">
                 <input
                   type="text"
                   name="message"
                   value={@message_input}
-                  class="flex-1 rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  class="flex-1 rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   placeholder="Send a message to the agent..."
                   autocomplete="off"
                 />
@@ -226,8 +226,8 @@ defmodule ForemanWeb.TaskLive.Show do
         <%!-- Right: Diff (when in review) --%>
         <%= if @task.status == "review" do %>
           <div class="w-1/2 flex flex-col">
-            <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
-              <h2 class="text-sm font-semibold text-gray-600">Changes</h2>
+            <div class="p-4 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex justify-between items-center">
+              <h2 class="text-sm font-semibold text-gray-600 dark:text-gray-400">Changes</h2>
               <button
                 phx-click="approve_and_merge"
                 class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm"
@@ -236,7 +236,7 @@ defmodule ForemanWeb.TaskLive.Show do
               </button>
             </div>
             <%= if @merge_error do %>
-              <div class="p-4 bg-red-50 border-b border-red-200 text-red-700 text-sm">
+              <div class="p-4 bg-red-50 dark:bg-red-900/30 border-b border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm">
                 <strong>Error:</strong> {@merge_error}
               </div>
             <% end %>
@@ -244,7 +244,7 @@ defmodule ForemanWeb.TaskLive.Show do
               <%= if @diff do %>
                 <pre class="text-xs font-mono whitespace-pre overflow-x-auto"><%= colorize_diff(@diff) %></pre>
               <% else %>
-                <p class="text-gray-400 text-center py-8">No changes to display.</p>
+                <p class="text-gray-400 dark:text-gray-500 text-center py-8">No changes to display.</p>
               <% end %>
             </div>
           </div>
@@ -254,10 +254,10 @@ defmodule ForemanWeb.TaskLive.Show do
     """
   end
 
-  defp message_class("user"), do: "bg-blue-50 border border-blue-200 ml-8"
-  defp message_class("assistant"), do: "bg-gray-50 border border-gray-200 mr-8"
-  defp message_class("system"), do: "bg-yellow-50 border border-yellow-200 text-center"
-  defp message_class(_), do: "bg-gray-50 border border-gray-200"
+  defp message_class("user"), do: "bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 ml-8"
+  defp message_class("assistant"), do: "bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 mr-8"
+  defp message_class("system"), do: "bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 text-center"
+  defp message_class(_), do: "bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600"
 
   defp colorize_diff(diff) do
     diff
@@ -265,9 +265,9 @@ defmodule ForemanWeb.TaskLive.Show do
     |> Enum.map(fn line ->
       class =
         cond do
-          String.starts_with?(line, "+") && !String.starts_with?(line, "+++") -> "text-green-700"
-          String.starts_with?(line, "-") && !String.starts_with?(line, "---") -> "text-red-700"
-          String.starts_with?(line, "@@") -> "text-blue-600"
+          String.starts_with?(line, "+") && !String.starts_with?(line, "+++") -> "text-green-600 dark:text-green-400"
+          String.starts_with?(line, "-") && !String.starts_with?(line, "---") -> "text-red-600 dark:text-red-400"
+          String.starts_with?(line, "@@") -> "text-blue-600 dark:text-blue-400"
           true -> ""
         end
 
