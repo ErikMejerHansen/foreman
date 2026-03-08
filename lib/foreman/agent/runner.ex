@@ -60,22 +60,14 @@ defmodule Foreman.Agent.Runner do
     # Note: user message is already persisted by the LiveView before calling this
 
     if state.port && Port.info(state.port) do
-      # Send message to the running claude process via stdin (stream-json input)
-      json_message =
-        Jason.encode!(%{
-          "type" => "user",
-          "message" => %{
-            "role" => "user",
-            "content" => message
-          }
-        })
-
-      Port.command(state.port, json_message <> "\n")
-      Logger.info("Sent message to claude stdin for task #{state.task_id}")
+      # Agent is still working on the current turn — ignore the message.
+      # The user's message was already persisted to chat; the agent will
+      # see it if/when it resumes via --resume.
+      Logger.info("Agent busy for task #{state.task_id}, message queued in chat history")
       {:noreply, state}
     else
-      # Port is not running (process exited), start a new session with --resume
-      Logger.info("Port not running, starting new claude session for task #{state.task_id}")
+      # Port is not running (previous turn finished), start a new turn with --resume
+      Logger.info("Starting new claude turn for task #{state.task_id}")
 
       case find_claude() do
         {:ok, claude_path} ->
@@ -121,6 +113,13 @@ defmodule Foreman.Agent.Runner do
         state
       end
 
+    # Move to review if the result handler hasn't already
+    task = Foreman.Tasks.get_task!(state.task_id)
+
+    if task.status == "in_progress" do
+      Foreman.Tasks.move_to_review(task)
+    end
+
     {:noreply, %{state | port: nil, buffer: ""}}
   end
 
@@ -146,7 +145,8 @@ defmodule Foreman.Agent.Runner do
   end
 
   @impl true
-  def handle_info(_msg, state) do
+  def handle_info(msg, state) do
+    Logger.debug("Runner unhandled message for task #{state.task_id}: #{inspect(msg, limit: 200)}")
     {:noreply, state}
   end
 
@@ -183,8 +183,6 @@ defmodule Foreman.Agent.Runner do
         "-p",
         prompt,
         "--output-format",
-        "stream-json",
-        "--input-format",
         "stream-json",
         "--verbose",
         "--allowedTools",
