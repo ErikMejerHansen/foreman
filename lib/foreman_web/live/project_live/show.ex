@@ -82,7 +82,7 @@ defmodule ForemanWeb.ProjectLive.Show do
         "in_progress" -> Tasks.move_to_in_progress(task)
         "review" -> Tasks.move_to_review(task)
         "done" -> Tasks.move_to_done(task)
-        "todo" -> {:error, "Cannot move back to todo"}
+        "todo" -> Tasks.move_to_todo(task)
         _ -> {:error, "Unknown status"}
       end
 

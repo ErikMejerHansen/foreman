@@ -140,6 +140,18 @@ defmodule Foreman.Tasks do
 
   def move_to_done(_task), do: {:error, "Can only move to done from review"}
 
+  def move_to_todo(%Task{status: "done"} = task) do
+    {:ok, task} =
+      task
+      |> Task.changeset(%{status: "todo", branch_name: nil, worktree_path: nil, session_id: nil})
+      |> Repo.update()
+
+    broadcast_project(task.project_id, {:task_updated, task})
+    {:ok, task}
+  end
+
+  def move_to_todo(_task), do: {:error, "Can only move to todo from done"}
+
   def move_to_failed(%Task{} = task) do
     Agent.Supervisor.stop_runner(task.id)
 
