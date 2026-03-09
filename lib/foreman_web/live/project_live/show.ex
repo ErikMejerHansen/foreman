@@ -202,7 +202,7 @@ defmodule ForemanWeb.ProjectLive.Show do
                   type="text"
                   name="task[title]"
                   value=""
-                  class="mt-1 block w-full rounded border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary"
+                  class="mt-1 block w-full rounded border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary px-3 py-2"
                   placeholder="Fix login bug"
                   required
                 />
@@ -212,7 +212,7 @@ defmodule ForemanWeb.ProjectLive.Show do
                 <textarea
                   name="task[instructions]"
                   rows="6"
-                  class="mt-1 block w-full rounded border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary"
+                  class="mt-1 block w-full rounded border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary px-3 py-2"
                   placeholder="Describe what the agent should do..."
                   required
                 ></textarea>

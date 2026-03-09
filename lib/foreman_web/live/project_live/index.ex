@@ -73,7 +73,7 @@ defmodule ForemanWeb.ProjectLive.Index do
                 type="text"
                 name="project[name]"
                 value={@changeset.changes[:name] || ""}
-                class="mt-1 block w-full rounded border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary"
+                class="mt-1 block w-full rounded border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary px-3 py-2"
                 placeholder="My Project"
                 required
               />
@@ -84,7 +84,7 @@ defmodule ForemanWeb.ProjectLive.Index do
                 type="text"
                 name="project[repo_path]"
                 value={@changeset.changes[:repo_path] || ""}
-                class="mt-1 block w-full rounded border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary"
+                class="mt-1 block w-full rounded border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary px-3 py-2"
                 placeholder="/path/to/git/repo"
                 required
               />

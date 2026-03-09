@@ -231,7 +231,7 @@ defmodule ForemanWeb.TaskLive.Show do
                   type="text"
                   name="message"
                   value={@message_input}
-                  class="flex-1 rounded border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary"
+                  class="flex-1 rounded border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary px-3 py-2"
                   placeholder="Send a message to the agent..."
                   autocomplete="off"
                 />
