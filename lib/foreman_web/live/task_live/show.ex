@@ -117,7 +117,16 @@ defmodule ForemanWeb.TaskLive.Show do
   @impl true
   def handle_info({:new_message, message}, socket) do
     messages = socket.assigns.messages ++ [message]
-    {:noreply, assign(socket, :messages, messages)}
+    socket = assign(socket, :messages, messages)
+
+    socket =
+      if socket.assigns.task.status == "in_progress" do
+        assign(socket, :diff, load_diff(socket.assigns.project, socket.assigns.task))
+      else
+        socket
+      end
+
+    {:noreply, socket}
   end
 
   @impl true
@@ -131,8 +140,8 @@ defmodule ForemanWeb.TaskLive.Show do
      |> assign(:diff, diff)}
   end
 
-  defp load_diff(project, %{status: "review", branch_name: branch} = _task)
-       when is_binary(branch) do
+  defp load_diff(project, %{status: status, branch_name: branch} = _task)
+       when status in ["in_progress", "review"] and is_binary(branch) do
     case Git.diff(project.repo_path, branch) do
       {:ok, diff} -> diff
       {:error, _} -> nil
@@ -267,22 +276,34 @@ defmodule ForemanWeb.TaskLive.Show do
                 >
                   Send
                 </button>
+                <%= if @task.status == "in_progress" do %>
+                  <button
+                    type="button"
+                    phx-click="send_message"
+                    phx-value-message="Please commit your current changes"
+                    class="bg-base-300 text-base-content px-4 py-2 rounded hover:bg-base-400 text-sm whitespace-nowrap"
+                  >
+                    Commit changes
+                  </button>
+                <% end %>
               </form>
             </div>
           <% end %>
         </div>
 
-        <%!-- Right: Diff (when in review) --%>
-        <%= if @task.status == "review" do %>
+        <%!-- Right: Diff (when in_progress or review) --%>
+        <%= if @task.status in ["in_progress", "review"] do %>
           <div class="w-1/2 flex flex-col">
             <div class="p-4 border-b border-base-300 bg-base-200 flex justify-between items-center">
               <h2 class="text-sm font-semibold text-base-content/70">Changes</h2>
-              <button
-                phx-click="approve_and_merge"
-                class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm"
-              >
-                Approve & Merge
-              </button>
+              <%= if @task.status == "review" do %>
+                <button
+                  phx-click="approve_and_merge"
+                  class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm"
+                >
+                  Approve & Merge
+                </button>
+              <% end %>
             </div>
             <%= if @merge_error do %>
               <div class="p-4 bg-error/10 border-b border-error/30 text-error text-sm">
@@ -290,10 +311,10 @@ defmodule ForemanWeb.TaskLive.Show do
               </div>
             <% end %>
             <div class="flex-1 overflow-auto p-4">
-              <%= if @diff do %>
+              <%= if @diff && @diff != "" do %>
                 <pre class="text-xs font-mono whitespace-pre overflow-x-auto"><%= colorize_diff(@diff) %></pre>
               <% else %>
-                <p class="text-base-content/40 text-center py-8">No changes to display.</p>
+                <p class="text-base-content/40 text-center py-8">No changes yet.</p>
               <% end %>
             </div>
           </div>
