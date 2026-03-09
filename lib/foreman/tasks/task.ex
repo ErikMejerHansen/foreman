@@ -15,6 +15,7 @@ defmodule Foreman.Tasks.Task do
     field :branch_name, :string
     field :worktree_path, :string
     field :session_id, :string
+    field :summary, :string
 
     belongs_to :project, Foreman.Projects.Project
     has_many :messages, Foreman.Chat.Message
@@ -32,6 +33,7 @@ defmodule Foreman.Tasks.Task do
       :branch_name,
       :worktree_path,
       :session_id,
+      :summary,
       :project_id
     ])
     |> validate_required([:title, :instructions, :project_id])
