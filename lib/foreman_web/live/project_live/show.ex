@@ -82,7 +82,7 @@ defmodule ForemanWeb.ProjectLive.Show do
         "in_progress" -> Tasks.move_to_in_progress(task)
         "review" -> Tasks.move_to_review(task)
         "done" -> Tasks.move_to_done(task)
-        "todo" -> {:error, "Cannot move back to todo"}
+        "todo" -> Tasks.move_to_todo(task)
         _ -> {:error, "Unknown status"}
       end
 
@@ -141,16 +141,19 @@ defmodule ForemanWeb.ProjectLive.Show do
   defp status_color("in_progress"), do: "bg-info/10 border-info/30"
   defp status_color("review"), do: "bg-warning/10 border-warning/30"
   defp status_color("done"), do: "bg-success/10 border-success/30"
+  defp status_color("failed"), do: "bg-error/10 border-error/30"
 
   defp status_label("todo"), do: "To Do"
   defp status_label("in_progress"), do: "In Progress"
   defp status_label("review"), do: "Review"
   defp status_label("done"), do: "Done"
+  defp status_label("failed"), do: "Failed"
 
   defp status_icon("todo"), do: "○"
   defp status_icon("in_progress"), do: "◉"
   defp status_icon("review"), do: "◎"
   defp status_icon("done"), do: "●"
+  defp status_icon("failed"), do: "✕"
 
   @impl true
   def render(assigns) do
@@ -186,7 +189,11 @@ defmodule ForemanWeb.ProjectLive.Show do
 
       <%!-- New Task Modal --%>
       <%= if @task_changeset do %>
-        <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div
+          id="new-task-modal"
+          phx-update="ignore"
+          class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+        >
           <div
             class="bg-base-100 rounded-lg shadow-xl p-6 w-full max-w-lg"
             phx-click-away="cancel_new_task"
@@ -199,7 +206,7 @@ defmodule ForemanWeb.ProjectLive.Show do
                   type="text"
                   name="task[title]"
                   value=""
-                  class="mt-1 block w-full rounded border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary"
+                  class="mt-1 block w-full rounded border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary px-3 py-2"
                   placeholder="Fix login bug"
                   required
                 />
@@ -209,7 +216,7 @@ defmodule ForemanWeb.ProjectLive.Show do
                 <textarea
                   name="task[instructions]"
                   rows="6"
-                  class="mt-1 block w-full rounded border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary"
+                  class="mt-1 block w-full rounded border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary px-3 py-2"
                   placeholder="Describe what the agent should do..."
                   required
                 ></textarea>
@@ -237,7 +244,7 @@ defmodule ForemanWeb.ProjectLive.Show do
       <%!-- Kanban Board --%>
       <div class="flex-1 overflow-x-auto p-6">
         <div class="flex gap-4 h-full min-w-max">
-          <%= for status <- ~w(todo in_progress review done) do %>
+          <%= for status <- ~w(todo in_progress review done failed) do %>
             <div class={"flex flex-col w-80 rounded-lg border #{status_color(status)}"}>
               <%!-- Column Header --%>
               <div class="px-4 py-3 border-b font-semibold text-sm flex items-center gap-2">

@@ -73,7 +73,7 @@ defmodule ForemanWeb.ProjectLive.Index do
                 type="text"
                 name="project[name]"
                 value={@changeset.changes[:name] || ""}
-                class="mt-1 block w-full rounded border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary"
+                class="mt-1 block w-full rounded border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary px-3 py-2"
                 placeholder="My Project"
                 required
               />
@@ -84,7 +84,7 @@ defmodule ForemanWeb.ProjectLive.Index do
                 type="text"
                 name="project[repo_path]"
                 value={@changeset.changes[:repo_path] || ""}
-                class="mt-1 block w-full rounded border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary"
+                class="mt-1 block w-full rounded border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary px-3 py-2"
                 placeholder="/path/to/git/repo"
                 required
               />
@@ -93,7 +93,10 @@ defmodule ForemanWeb.ProjectLive.Index do
               <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
                 Create
               </button>
-              <.link patch={~p"/projects"} class="px-4 py-2 rounded border border-base-300 hover:bg-base-200">
+              <.link
+                patch={~p"/projects"}
+                class="px-4 py-2 rounded border border-base-300 hover:bg-base-200"
+              >
                 Cancel
               </.link>
             </div>
@@ -103,7 +106,9 @@ defmodule ForemanWeb.ProjectLive.Index do
 
       <div class="grid gap-4">
         <%= if @projects == [] do %>
-          <p class="text-base-content/60 text-center py-12">No projects yet. Create one to get started.</p>
+          <p class="text-base-content/60 text-center py-12">
+            No projects yet. Create one to get started.
+          </p>
         <% end %>
         <%= for project <- @projects do %>
           <div class="bg-base-100 rounded-lg shadow p-6 hover:shadow-md transition-shadow">

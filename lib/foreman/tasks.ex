@@ -37,19 +37,20 @@ defmodule Foreman.Tasks do
     Task.changeset(task, attrs)
   end
 
-  def move_to_in_progress(%Task{status: status} = task) when status in ["todo", "review"] do
+  def move_to_in_progress(%Task{status: status} = task)
+      when status in ["todo", "review", "failed"] do
     project = Foreman.Projects.get_project!(task.project_id)
     branch_name = slugify(task.title)
     worktree_path = Path.join(project.repo_path, ".worktrees/#{branch_name}")
 
-    # Only create worktree if coming from todo (review already has one)
+    # Only create worktree if coming from todo (review/failed already have one)
     if status == "todo" do
       case Git.create_worktree(project.repo_path, branch_name, worktree_path) do
         :ok -> start_agent(task, branch_name, worktree_path)
         {:error, reason} -> {:error, reason}
       end
     else
-      # From review — reuse existing runner if alive
+      # From review/failed — reuse existing runner if alive
       case Agent.Supervisor.find_runner(task.id) do
         nil ->
           start_agent(task, task.branch_name, task.worktree_path)
@@ -118,10 +119,7 @@ defmodule Foreman.Tasks do
     project = Foreman.Projects.get_project!(task.project_id)
 
     # Stop the runner if still alive
-    case Agent.Supervisor.find_runner(task.id) do
-      nil -> :ok
-      pid -> GenServer.stop(pid, :normal)
-    end
+    Agent.Supervisor.stop_runner(task.id)
 
     with :ok <- Git.rebase_from_main(task.worktree_path),
          :ok <- Git.merge_to_main(project.repo_path, task.branch_name),
@@ -143,11 +141,39 @@ defmodule Foreman.Tasks do
 
   def move_to_done(_task), do: {:error, "Can only move to done from review"}
 
+  def move_to_todo(%Task{status: "done"} = task) do
+    {:ok, task} =
+      task
+      |> Task.changeset(%{status: "todo", branch_name: nil, worktree_path: nil, session_id: nil})
+      |> Repo.update()
+
+    broadcast_project(task.project_id, {:task_updated, task})
+    {:ok, task}
+  end
+
+  def move_to_todo(_task), do: {:error, "Can only move to todo from done"}
+
+  def move_to_failed(%Task{} = task) do
+    Agent.Supervisor.stop_runner(task.id)
+
+    {:ok, task} =
+      task
+      |> Task.changeset(%{status: "failed"})
+      |> Repo.update()
+
+    broadcast_project(task.project_id, {:task_updated, task})
+    broadcast_task(task.id, {:status_changed, "failed"})
+    {:ok, task}
+  end
+
+  def retry_failed(%Task{status: "failed"} = task) do
+    move_to_in_progress(task)
+  end
+
+  def retry_failed(_task), do: {:error, "Can only retry failed tasks"}
+
   def delete_task(%Task{} = task) do
-    case Agent.Supervisor.find_runner(task.id) do
-      nil -> :ok
-      pid -> GenServer.stop(pid, :normal)
-    end
+    Agent.Supervisor.stop_runner(task.id)
 
     if task.worktree_path && task.branch_name do
       project = Foreman.Projects.get_project!(task.project_id)
@@ -166,11 +192,22 @@ defmodule Foreman.Tasks do
   end
 
   def update_session_id(task_id, session_id) do
-    task = Repo.get!(Task, task_id)
+    from(t in Task, where: t.id == ^task_id)
+    |> Repo.update_all(set: [session_id: session_id])
 
-    task
-    |> Task.changeset(%{session_id: session_id})
-    |> Repo.update()
+    :ok
+  end
+
+  def update_result_metadata(task_id, metadata) do
+    sets =
+      metadata
+      |> Enum.filter(fn {_k, v} -> v != nil end)
+      |> Enum.map(fn {k, v} -> {k, v} end)
+
+    from(t in Task, where: t.id == ^task_id)
+    |> Repo.update_all(set: sets)
+
+    :ok
   end
 
   def send_feedback(%Task{status: "review"} = task, message) do

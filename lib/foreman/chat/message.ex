@@ -5,7 +5,7 @@ defmodule Foreman.Chat.Message do
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
 
-  @roles ~w(user assistant system)
+  @roles ~w(user assistant system thinking tool_use)
 
   schema "messages" do
     field :role, :string

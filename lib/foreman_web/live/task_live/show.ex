@@ -102,6 +102,19 @@ defmodule ForemanWeb.TaskLive.Show do
   end
 
   @impl true
+  def handle_event("retry_task", _params, socket) do
+    task = socket.assigns.task
+
+    case Tasks.retry_failed(task) do
+      {:ok, task} ->
+        {:noreply, assign(socket, :task, task)}
+
+      {:error, reason} ->
+        {:noreply, put_flash(socket, :error, "#{reason}")}
+    end
+  end
+
+  @impl true
   def handle_info({:new_message, message}, socket) do
     messages = socket.assigns.messages ++ [message]
     {:noreply, assign(socket, :messages, messages)}
@@ -132,11 +145,13 @@ defmodule ForemanWeb.TaskLive.Show do
   defp status_badge_class("in_progress"), do: "bg-info/20 text-info"
   defp status_badge_class("review"), do: "bg-warning/20 text-warning"
   defp status_badge_class("done"), do: "bg-success/20 text-success"
+  defp status_badge_class("failed"), do: "bg-error/20 text-error"
 
   defp status_label("todo"), do: "To Do"
   defp status_label("in_progress"), do: "In Progress"
   defp status_label("review"), do: "Review"
   defp status_label("done"), do: "Done"
+  defp status_label("failed"), do: "Failed"
 
   defp can_chat?(status), do: status in ["in_progress", "review"]
 
@@ -150,7 +165,10 @@ defmodule ForemanWeb.TaskLive.Show do
       <%!-- Header --%>
       <div class="bg-base-100 border-b border-base-300 px-6 py-4">
         <div class="flex items-center gap-4">
-          <.link navigate={~p"/projects/#{@project.id}"} class="text-base-content/60 hover:text-base-content">
+          <.link
+            navigate={~p"/projects/#{@project.id}"}
+            class="text-base-content/60 hover:text-base-content"
+          >
             &larr; Board
           </.link>
           <h1 class="text-xl font-bold">{@task.title}</h1>
@@ -159,6 +177,23 @@ defmodule ForemanWeb.TaskLive.Show do
           </span>
           <%= if @task.branch_name do %>
             <span class="text-sm text-info font-mono">{@task.branch_name}</span>
+          <% end %>
+          <%= if @task.total_cost_usd do %>
+            <span class="text-xs text-base-content/50 font-mono">
+              ${:erlang.float_to_binary(@task.total_cost_usd, decimals: 4)}
+            </span>
+          <% end %>
+          <%= if @task.total_input_tokens do %>
+            <span class="text-xs text-base-content/50 font-mono">
+              {format_tokens(@task.total_input_tokens)} in / {format_tokens(
+                @task.total_output_tokens || 0
+              )} out
+            </span>
+          <% end %>
+          <%= if @task.num_turns do %>
+            <span class="text-xs text-base-content/50">
+              {@task.num_turns} turns
+            </span>
           <% end %>
         </div>
       </div>
@@ -176,6 +211,14 @@ defmodule ForemanWeb.TaskLive.Show do
                 class="mt-3 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm"
               >
                 Start Task
+              </button>
+            <% end %>
+            <%= if @task.status == "failed" do %>
+              <button
+                phx-click="retry_task"
+                class="mt-3 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm"
+              >
+                Retry Task
               </button>
             <% end %>
           </div>
@@ -208,7 +251,7 @@ defmodule ForemanWeb.TaskLive.Show do
                   type="text"
                   name="message"
                   value={@message_input}
-                  class="flex-1 rounded border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary"
+                  class="flex-1 rounded border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary px-3 py-2"
                   placeholder="Send a message to the agent..."
                   autocomplete="off"
                 />
@@ -257,7 +300,26 @@ defmodule ForemanWeb.TaskLive.Show do
   defp message_class("user"), do: "bg-info/10 border border-info/20 ml-8"
   defp message_class("assistant"), do: "bg-base-200 border border-base-300 mr-8"
   defp message_class("system"), do: "bg-warning/10 border border-warning/20 text-center"
+
+  defp message_class("thinking"),
+    do: "bg-purple-500/10 border border-purple-500/20 mr-8 italic opacity-75"
+
+  defp message_class("tool_use"),
+    do: "bg-cyan-500/10 border border-cyan-500/20 mr-8 font-mono text-xs"
+
   defp message_class(_), do: "bg-base-200 border border-base-300"
+
+  defp format_tokens(n) when is_integer(n) and n >= 1000 do
+    n
+    |> Integer.to_string()
+    |> String.graphemes()
+    |> Enum.reverse()
+    |> Enum.chunk_every(3)
+    |> Enum.join(",")
+    |> String.reverse()
+  end
+
+  defp format_tokens(n), do: to_string(n)
 
   defp colorize_diff(diff) do
     diff
