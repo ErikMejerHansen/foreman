@@ -231,15 +231,21 @@ defmodule ForemanWeb.TaskLive.Show do
               </p>
             <% end %>
             <%= for message <- @messages do %>
-              <div class={[
-                "rounded-lg p-3 text-sm",
-                message_class(message.role)
-              ]}>
-                <div class="font-semibold text-xs mb-1 uppercase tracking-wide opacity-60">
-                  {message.role}
+              <%= if message.role == "tool_use" do %>
+                <div class="text-xs text-base-content/40 font-mono py-0.5">
+                  🛠️ {message.content}
                 </div>
-                <div class="whitespace-pre-wrap break-words">{message.content}</div>
-              </div>
+              <% else %>
+                <div class={[
+                  "rounded-lg p-3 text-sm",
+                  message_class(message.role)
+                ]}>
+                  <div class="font-semibold text-xs mb-1 uppercase tracking-wide opacity-60">
+                    {message.role}
+                  </div>
+                  <div class="whitespace-pre-wrap break-words">{message.content}</div>
+                </div>
+              <% end %>
             <% end %>
           </div>
 
@@ -303,9 +309,6 @@ defmodule ForemanWeb.TaskLive.Show do
 
   defp message_class("thinking"),
     do: "bg-purple-500/10 border border-purple-500/20 mr-8 italic opacity-75"
-
-  defp message_class("tool_use"),
-    do: "bg-cyan-500/10 border border-cyan-500/20 mr-8 font-mono text-xs"
 
   defp message_class(_), do: "bg-base-200 border border-base-300"
 
