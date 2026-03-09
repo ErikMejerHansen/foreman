@@ -8,6 +8,7 @@ defmodule Foreman.Projects.Project do
   schema "projects" do
     field :name, :string
     field :repo_path, :string
+    field :knowledge_sharing, :boolean, default: false
 
     has_many :tasks, Foreman.Tasks.Task
 
@@ -16,7 +17,7 @@ defmodule Foreman.Projects.Project do
 
   def changeset(project, attrs) do
     project
-    |> cast(attrs, [:name, :repo_path])
+    |> cast(attrs, [:name, :repo_path, :knowledge_sharing])
     |> validate_required([:name, :repo_path])
   end
 end

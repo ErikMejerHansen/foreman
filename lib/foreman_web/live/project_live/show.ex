@@ -36,6 +36,20 @@ defmodule ForemanWeb.ProjectLive.Show do
   end
 
   @impl true
+  def handle_event("toggle_knowledge_sharing", _params, socket) do
+    project = socket.assigns.project
+    new_value = !project.knowledge_sharing
+
+    case Projects.update_project(project, %{knowledge_sharing: new_value}) do
+      {:ok, project} ->
+        {:noreply, assign(socket, :project, project)}
+
+      {:error, _changeset} ->
+        {:noreply, put_flash(socket, :error, "Failed to update knowledge sharing setting")}
+    end
+  end
+
+  @impl true
   def handle_event("new_task", _params, socket) do
     {:noreply, push_patch(socket, to: ~p"/projects/#{socket.assigns.project.id}/tasks/new")}
   end
@@ -151,12 +165,23 @@ defmodule ForemanWeb.ProjectLive.Show do
           <h1 class="text-xl font-bold">{@project.name}</h1>
           <span class="text-sm text-base-content/60 font-mono">{@project.repo_path}</span>
         </div>
-        <button
-          phx-click="new_task"
-          class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm"
-        >
-          + New Task
-        </button>
+        <div class="flex items-center gap-4">
+          <label class="flex items-center gap-2 cursor-pointer text-sm">
+            <input
+              type="checkbox"
+              checked={@project.knowledge_sharing}
+              phx-click="toggle_knowledge_sharing"
+              class="toggle toggle-sm"
+            />
+            <span class="text-base-content/70">Knowledge sharing</span>
+          </label>
+          <button
+            phx-click="new_task"
+            class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm"
+          >
+            + New Task
+          </button>
+        </div>
       </div>
 
       <%!-- New Task Modal --%>
@@ -246,7 +271,9 @@ defmodule ForemanWeb.ProjectLive.Show do
                     </button>
                     <.link navigate={~p"/projects/#{@project.id}/tasks/#{task.id}"} class="block">
                       <h3 class="font-medium text-sm">{task.title}</h3>
-                      <p class="text-xs text-base-content/60 mt-1 line-clamp-2">{task.instructions}</p>
+                      <p class="text-xs text-base-content/60 mt-1 line-clamp-2">
+                        {if task.summary, do: task.summary, else: task.instructions}
+                      </p>
                       <%= if task.branch_name do %>
                         <p class="text-xs text-info mt-2 font-mono">{task.branch_name}</p>
                       <% end %>

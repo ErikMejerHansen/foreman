@@ -79,7 +79,9 @@ defmodule Foreman.Tasks do
       })
       |> Repo.update()
 
-    prompt = Keyword.get(opts, :prompt, task.instructions)
+    project = Foreman.Projects.get_project!(task.project_id)
+    raw_prompt = Keyword.get(opts, :prompt, task.instructions)
+    prompt = maybe_enrich_prompt(raw_prompt, task, project)
     skip_chat_message = Keyword.get(opts, :skip_chat_message, false)
 
     case Agent.Supervisor.start_runner(%{
@@ -129,6 +131,9 @@ defmodule Foreman.Tasks do
         task
         |> Task.changeset(%{status: "done"})
         |> Repo.update()
+
+      # Generate summary in background (don't block the done transition)
+      spawn(fn -> maybe_generate_summary(task) end)
 
       broadcast_project(task.project_id, {:task_updated, task})
       broadcast_task(task.id, {:status_changed, "done"})
@@ -224,6 +229,103 @@ defmodule Foreman.Tasks do
 
   def broadcast_task(task_id, message) do
     Phoenix.PubSub.broadcast(Foreman.PubSub, "task:#{task_id}", message)
+  end
+
+  @max_context_tasks 10
+
+  defp maybe_enrich_prompt(prompt, task, %{knowledge_sharing: true} = _project) do
+    sibling_tasks =
+      Repo.all(
+        from t in Task,
+          where: t.project_id == ^task.project_id and t.id != ^task.id,
+          where: t.status in ["done", "in_progress"],
+          order_by: [desc: t.updated_at]
+      )
+
+    done_tasks =
+      sibling_tasks
+      |> Enum.filter(&(&1.status == "done"))
+      |> Enum.take(@max_context_tasks)
+
+    in_progress_tasks = Enum.filter(sibling_tasks, &(&1.status == "in_progress"))
+
+    if done_tasks == [] and in_progress_tasks == [] do
+      prompt
+    else
+      context = build_project_context(done_tasks, in_progress_tasks)
+      "#{context}\n## Your Task\n#{prompt}"
+    end
+  end
+
+  defp maybe_enrich_prompt(prompt, _task, _project), do: prompt
+
+  defp build_project_context(done_tasks, in_progress_tasks) do
+    sections = ["## Project Context"]
+
+    sections =
+      if done_tasks != [] do
+        lines =
+          Enum.map(done_tasks, fn t ->
+            summary = if t.summary, do: " — #{t.summary}", else: ""
+            "- \"#{t.title}\"#{summary}"
+          end)
+
+        sections ++ ["Recently completed tasks:" | lines]
+      else
+        sections
+      end
+
+    sections =
+      if in_progress_tasks != [] do
+        lines = Enum.map(in_progress_tasks, fn t -> "- \"#{t.title}\"" end)
+        sections ++ ["", "Currently in progress:" | lines]
+      else
+        sections
+      end
+
+    Enum.join(sections, "\n") <> "\n"
+  end
+
+  defp maybe_generate_summary(%Task{} = task) do
+    project = Foreman.Projects.get_project!(task.project_id)
+
+    if project.knowledge_sharing do
+      generate_summary(task)
+    else
+      {:ok, task}
+    end
+  end
+
+  defp generate_summary(%Task{} = task) do
+    messages = Foreman.Chat.list_messages(task.id)
+
+    chat_excerpt =
+      messages
+      |> Enum.take(-20)
+      |> Enum.map(fn m -> "#{m.role}: #{String.slice(m.content, 0, 300)}" end)
+      |> Enum.join("\n")
+
+    summary_prompt =
+      "Summarize what was accomplished in this task in 2-3 sentences. " <>
+        "Task title: #{task.title}\n" <>
+        "Task instructions: #{String.slice(task.instructions, 0, 500)}\n" <>
+        "Recent chat:\n#{chat_excerpt}"
+
+    case System.cmd("claude", ["-p", summary_prompt, "--max-tokens", "200"],
+           stderr_to_stdout: true
+         ) do
+      {summary, 0} ->
+        summary = String.trim(summary)
+
+        task
+        |> Task.changeset(%{summary: summary})
+        |> Repo.update()
+
+      {error, _code} ->
+        require Logger
+        Logger.warning("Failed to generate summary for task #{task.id}: #{error}")
+        {:ok, task}
+    end
   end
 
   defp slugify(title) do
