@@ -189,7 +189,11 @@ defmodule ForemanWeb.ProjectLive.Show do
 
       <%!-- New Task Modal --%>
       <%= if @task_changeset do %>
-        <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div
+          id="new-task-modal"
+          phx-update="ignore"
+          class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+        >
           <div
             class="bg-base-100 rounded-lg shadow-xl p-6 w-full max-w-lg"
             phx-click-away="cancel_new_task"
