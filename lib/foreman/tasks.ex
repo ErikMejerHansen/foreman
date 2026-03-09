@@ -37,7 +37,8 @@ defmodule Foreman.Tasks do
     Task.changeset(task, attrs)
   end
 
-  def move_to_in_progress(%Task{status: status} = task) when status in ["todo", "review", "failed"] do
+  def move_to_in_progress(%Task{status: status} = task)
+      when status in ["todo", "review", "failed"] do
     project = Foreman.Projects.get_project!(task.project_id)
     branch_name = slugify(task.title)
     worktree_path = Path.join(project.repo_path, ".worktrees/#{branch_name}")
@@ -193,6 +194,18 @@ defmodule Foreman.Tasks do
   def update_session_id(task_id, session_id) do
     from(t in Task, where: t.id == ^task_id)
     |> Repo.update_all(set: [session_id: session_id])
+
+    :ok
+  end
+
+  def update_result_metadata(task_id, metadata) do
+    sets =
+      metadata
+      |> Enum.filter(fn {_k, v} -> v != nil end)
+      |> Enum.map(fn {k, v} -> {k, v} end)
+
+    from(t in Task, where: t.id == ^task_id)
+    |> Repo.update_all(set: sets)
 
     :ok
   end

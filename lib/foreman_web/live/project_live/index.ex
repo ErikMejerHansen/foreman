@@ -93,7 +93,10 @@ defmodule ForemanWeb.ProjectLive.Index do
               <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
                 Create
               </button>
-              <.link patch={~p"/projects"} class="px-4 py-2 rounded border border-base-300 hover:bg-base-200">
+              <.link
+                patch={~p"/projects"}
+                class="px-4 py-2 rounded border border-base-300 hover:bg-base-200"
+              >
                 Cancel
               </.link>
             </div>
@@ -103,7 +106,9 @@ defmodule ForemanWeb.ProjectLive.Index do
 
       <div class="grid gap-4">
         <%= if @projects == [] do %>
-          <p class="text-base-content/60 text-center py-12">No projects yet. Create one to get started.</p>
+          <p class="text-base-content/60 text-center py-12">
+            No projects yet. Create one to get started.
+          </p>
         <% end %>
         <%= for project <- @projects do %>
           <div class="bg-base-100 rounded-lg shadow p-6 hover:shadow-md transition-shadow">

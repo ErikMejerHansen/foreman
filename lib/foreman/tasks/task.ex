@@ -16,6 +16,11 @@ defmodule Foreman.Tasks.Task do
     field :worktree_path, :string
     field :session_id, :string
     field :summary, :string
+    field :total_cost_usd, :float
+    field :total_input_tokens, :integer
+    field :total_output_tokens, :integer
+    field :num_turns, :integer
+    field :duration_ms, :integer
 
     belongs_to :project, Foreman.Projects.Project
     has_many :messages, Foreman.Chat.Message
