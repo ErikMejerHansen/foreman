@@ -56,11 +56,17 @@ defmodule ForemanWeb.ProjectLive.Show do
   end
 
   @impl true
-  def handle_event("save_task", %{"task" => task_params}, socket) do
-    task_params = Map.put(task_params, "project_id", socket.assigns.project.id)
+  def handle_event("save_task", params, socket) do
+    task_params =
+      params
+      |> Map.get("task", %{})
+      |> Map.put("project_id", socket.assigns.project.id)
+
+    auto_start = Map.get(params, "auto_start") == "on"
 
     case Tasks.create_task(task_params) do
-      {:ok, _task} ->
+      {:ok, task} ->
+        if auto_start, do: Tasks.move_to_in_progress(task)
         tasks = Tasks.list_tasks_for_project(socket.assigns.project.id)
 
         {:noreply,
@@ -227,20 +233,26 @@ defmodule ForemanWeb.ProjectLive.Show do
                   required
                 ></textarea>
               </div>
-              <div class="flex gap-2 justify-end">
-                <button
-                  type="button"
-                  phx-click="cancel_new_task"
-                  class="px-4 py-2 rounded border border-base-300 hover:bg-base-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                >
-                  Create Task
-                </button>
+              <div class="flex items-center justify-between">
+                <label class="flex items-center gap-2 cursor-pointer text-sm">
+                  <input type="checkbox" name="auto_start" class="toggle toggle-sm" />
+                  <span class="text-base-content/70">Start automatically</span>
+                </label>
+                <div class="flex gap-2">
+                  <button
+                    type="button"
+                    phx-click="cancel_new_task"
+                    class="px-4 py-2 rounded border border-base-300 hover:bg-base-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                  >
+                    Create Task
+                  </button>
+                </div>
               </div>
             </.form>
           </div>
