@@ -142,6 +142,9 @@ defmodule Foreman.Agent.Runner do
       "content" => "Agent exited with code #{code}"
     })
 
+    task = Foreman.Tasks.get_task!(state.task_id)
+    Foreman.Tasks.move_to_failed(task)
+
     {:noreply, %{state | port: nil, buffer: ""}}
   end
 
@@ -273,6 +276,23 @@ defmodule Foreman.Agent.Runner do
         end
 
         state
+
+      {:ok, %{"type" => "result", "is_error" => true, "result" => error_text, "session_id" => session_id}} ->
+        Logger.error("Claude result error for task #{state.task_id}: #{error_text}")
+        Foreman.Tasks.update_session_id(state.task_id, session_id)
+
+        if error_text && error_text != "" do
+          Foreman.Chat.create_message(%{
+            "task_id" => state.task_id,
+            "role" => "system",
+            "content" => error_text
+          })
+        end
+
+        task = Foreman.Tasks.get_task!(state.task_id)
+        Foreman.Tasks.move_to_failed(task)
+
+        %{state | session_id: session_id}
 
       {:ok, %{"type" => "result", "result" => result_text, "session_id" => session_id}} ->
         Logger.info("Claude result for task #{state.task_id}, session: #{session_id}")

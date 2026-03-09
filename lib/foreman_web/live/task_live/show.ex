@@ -102,6 +102,19 @@ defmodule ForemanWeb.TaskLive.Show do
   end
 
   @impl true
+  def handle_event("retry_task", _params, socket) do
+    task = socket.assigns.task
+
+    case Tasks.retry_failed(task) do
+      {:ok, task} ->
+        {:noreply, assign(socket, :task, task)}
+
+      {:error, reason} ->
+        {:noreply, put_flash(socket, :error, "#{reason}")}
+    end
+  end
+
+  @impl true
   def handle_info({:new_message, message}, socket) do
     messages = socket.assigns.messages ++ [message]
     {:noreply, assign(socket, :messages, messages)}
@@ -132,11 +145,13 @@ defmodule ForemanWeb.TaskLive.Show do
   defp status_badge_class("in_progress"), do: "bg-info/20 text-info"
   defp status_badge_class("review"), do: "bg-warning/20 text-warning"
   defp status_badge_class("done"), do: "bg-success/20 text-success"
+  defp status_badge_class("failed"), do: "bg-error/20 text-error"
 
   defp status_label("todo"), do: "To Do"
   defp status_label("in_progress"), do: "In Progress"
   defp status_label("review"), do: "Review"
   defp status_label("done"), do: "Done"
+  defp status_label("failed"), do: "Failed"
 
   defp can_chat?(status), do: status in ["in_progress", "review"]
 
@@ -176,6 +191,14 @@ defmodule ForemanWeb.TaskLive.Show do
                 class="mt-3 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm"
               >
                 Start Task
+              </button>
+            <% end %>
+            <%= if @task.status == "failed" do %>
+              <button
+                phx-click="retry_task"
+                class="mt-3 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm"
+              >
+                Retry Task
               </button>
             <% end %>
           </div>

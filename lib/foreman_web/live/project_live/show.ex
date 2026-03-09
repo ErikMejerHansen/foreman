@@ -141,16 +141,19 @@ defmodule ForemanWeb.ProjectLive.Show do
   defp status_color("in_progress"), do: "bg-info/10 border-info/30"
   defp status_color("review"), do: "bg-warning/10 border-warning/30"
   defp status_color("done"), do: "bg-success/10 border-success/30"
+  defp status_color("failed"), do: "bg-error/10 border-error/30"
 
   defp status_label("todo"), do: "To Do"
   defp status_label("in_progress"), do: "In Progress"
   defp status_label("review"), do: "Review"
   defp status_label("done"), do: "Done"
+  defp status_label("failed"), do: "Failed"
 
   defp status_icon("todo"), do: "○"
   defp status_icon("in_progress"), do: "◉"
   defp status_icon("review"), do: "◎"
   defp status_icon("done"), do: "●"
+  defp status_icon("failed"), do: "✕"
 
   @impl true
   def render(assigns) do
@@ -237,7 +240,7 @@ defmodule ForemanWeb.ProjectLive.Show do
       <%!-- Kanban Board --%>
       <div class="flex-1 overflow-x-auto p-6">
         <div class="flex gap-4 h-full min-w-max">
-          <%= for status <- ~w(todo in_progress review done) do %>
+          <%= for status <- ~w(todo in_progress review done failed) do %>
             <div class={"flex flex-col w-80 rounded-lg border #{status_color(status)}"}>
               <%!-- Column Header --%>
               <div class="px-4 py-3 border-b font-semibold text-sm flex items-center gap-2">
