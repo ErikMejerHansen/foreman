@@ -19,7 +19,8 @@ defmodule ForemanWeb.ProjectLive.Show do
      |> assign(:project, project)
      |> assign(:tasks, tasks)
      |> assign(:page_title, project.name)
-     |> assign(:task_changeset, nil)}
+     |> assign(:task_changeset, nil)
+     |> assign(:show_all_done, false)}
   end
 
   @impl true
@@ -94,6 +95,11 @@ defmodule ForemanWeb.ProjectLive.Show do
       {:error, reason} ->
         {:noreply, put_flash(socket, :error, "#{reason}")}
     end
+  end
+
+  @impl true
+  def handle_event("toggle_show_all_done", _params, socket) do
+    {:noreply, update(socket, :show_all_done, &(!&1))}
   end
 
   @impl true
@@ -245,13 +251,19 @@ defmodule ForemanWeb.ProjectLive.Show do
       <div class="flex-1 overflow-x-auto p-6">
         <div class="flex gap-4 h-full min-w-max">
           <%= for status <- ~w(todo in_progress review done failed) do %>
+            <% all_status_tasks = tasks_by_status(@tasks, status) %>
+            <% displayed_tasks =
+              if status == "done" && !@show_all_done,
+                do: Enum.take(all_status_tasks, -8),
+                else: all_status_tasks %>
+            <% hidden_count = length(all_status_tasks) - length(displayed_tasks) %>
             <div class={"flex flex-col w-80 rounded-lg border #{status_color(status)}"}>
               <%!-- Column Header --%>
               <div class="px-4 py-3 border-b font-semibold text-sm flex items-center gap-2">
                 <span>{status_icon(status)}</span>
                 <span>{status_label(status)}</span>
                 <span class="ml-auto bg-base-100/50 px-2 py-0.5 rounded-full text-xs">
-                  {length(tasks_by_status(@tasks, status))}
+                  {length(all_status_tasks)}
                 </span>
               </div>
 
@@ -262,7 +274,15 @@ defmodule ForemanWeb.ProjectLive.Show do
                 phx-hook="Sortable"
                 data-status={status}
               >
-                <%= for task <- tasks_by_status(@tasks, status) do %>
+                <%= if hidden_count > 0 do %>
+                  <button
+                    phx-click="toggle_show_all_done"
+                    class="w-full text-xs text-base-content/50 hover:text-base-content py-1.5 text-center rounded border border-dashed border-base-300 hover:border-base-content/30 transition-colors"
+                  >
+                    + {hidden_count} older tasks
+                  </button>
+                <% end %>
+                <%= for task <- displayed_tasks do %>
                   <div
                     class="bg-base-100 rounded-lg shadow-sm border border-base-300 p-3 cursor-pointer hover:shadow-md transition-shadow group relative"
                     id={"task-#{task.id}"}
@@ -286,6 +306,14 @@ defmodule ForemanWeb.ProjectLive.Show do
                       <% end %>
                     </.link>
                   </div>
+                <% end %>
+                <%= if status == "done" && @show_all_done && length(all_status_tasks) > 8 do %>
+                  <button
+                    phx-click="toggle_show_all_done"
+                    class="w-full text-xs text-base-content/50 hover:text-base-content py-1.5 text-center rounded border border-dashed border-base-300 hover:border-base-content/30 transition-colors"
+                  >
+                    Show less
+                  </button>
                 <% end %>
               </div>
             </div>
