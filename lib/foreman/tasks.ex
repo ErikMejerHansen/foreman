@@ -81,7 +81,8 @@ defmodule Foreman.Tasks do
       |> Repo.update()
 
     project = Foreman.Projects.get_project!(task.project_id)
-    raw_prompt = Keyword.get(opts, :prompt, task.instructions)
+    default_prompt = "# #{task.title}\n\n#{task.instructions}"
+    raw_prompt = Keyword.get(opts, :prompt, default_prompt)
     prompt = maybe_enrich_prompt(raw_prompt, task, project)
     skip_chat_message = Keyword.get(opts, :skip_chat_message, false)
 
