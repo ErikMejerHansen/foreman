@@ -181,8 +181,6 @@ defmodule Foreman.Agent.Runner do
   defp spawn_claude(state, prompt, claude_path) do
     args =
       [
-        "-p",
-        prompt,
         "--output-format",
         "stream-json",
         "--input-format",
@@ -216,6 +214,18 @@ defmodule Foreman.Agent.Runner do
           {~c"CLAUDECODE", false}
         ]}
       ])
+
+    # Send the initial prompt via stdin as stream-json (required when --input-format stream-json is used)
+    json_line =
+      Jason.encode!(%{
+        "type" => "user",
+        "message" => %{
+          "role" => "user",
+          "content" => prompt
+        }
+      })
+
+    Port.command(port, json_line <> "\n")
 
     %{state | port: port}
   end
