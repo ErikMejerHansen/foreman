@@ -140,12 +140,10 @@ defmodule ForemanWeb.TaskLive.Show do
      |> assign(:diff, diff)}
   end
 
-  defp load_diff(project, %{status: status, branch_name: branch} = _task)
+  defp load_diff(project, %{status: status, branch_name: branch, worktree_path: worktree_path} = _task)
        when status in ["in_progress", "review"] and is_binary(branch) do
-    case Git.diff(project.repo_path, branch) do
-      {:ok, diff} -> diff
-      {:error, _} -> nil
-    end
+    {:ok, diff} = Git.diff(project.repo_path, branch, worktree_path)
+    diff
   end
 
   defp load_diff(_project, _task), do: nil
@@ -276,7 +274,7 @@ defmodule ForemanWeb.TaskLive.Show do
                 >
                   Send
                 </button>
-                <%= if @task.status == "in_progress" do %>
+                <%= if @task.status in ["in_progress", "review"] do %>
                   <button
                     type="button"
                     phx-click="send_message"

@@ -21,13 +21,47 @@ defmodule Foreman.Git do
     end
   end
 
-  def diff(repo_path, branch_name) do
-    case System.cmd("git", ["diff", "main...#{branch_name}"],
-           cd: repo_path,
-           stderr_to_stdout: true
-         ) do
-      {output, 0} -> {:ok, output}
-      {output, _} -> {:error, "Failed to get diff: #{output}"}
+  def diff(repo_path, branch_name, worktree_path \\ nil) do
+    committed =
+      case System.cmd("git", ["diff", "main...#{branch_name}"],
+             cd: repo_path,
+             stderr_to_stdout: true
+           ) do
+        {output, 0} -> output
+        _ -> ""
+      end
+
+    uncommitted =
+      if worktree_path && File.dir?(worktree_path) do
+        staged =
+          case System.cmd("git", ["diff", "--cached"],
+                 cd: worktree_path,
+                 stderr_to_stdout: true
+               ) do
+            {output, 0} -> output
+            _ -> ""
+          end
+
+        unstaged =
+          case System.cmd("git", ["diff"],
+                 cd: worktree_path,
+                 stderr_to_stdout: true
+               ) do
+            {output, 0} -> output
+            _ -> ""
+          end
+
+        staged <> unstaged
+      else
+        ""
+      end
+
+    combined = committed <> uncommitted
+
+    if combined == "" do
+      {:ok, ""}
+    else
+      {:ok, combined}
     end
   end
 
