@@ -145,7 +145,7 @@ defmodule Foreman.Agent.Runner do
     task = Foreman.Tasks.get_task!(state.task_id)
     Foreman.Tasks.move_to_failed(task)
 
-    {:noreply, %{state | port: nil, buffer: ""}}
+    {:stop, :normal, %{state | port: nil, buffer: ""}}
   end
 
   @impl true
