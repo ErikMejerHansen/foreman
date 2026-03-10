@@ -265,7 +265,8 @@ defmodule ForemanWeb.TaskLive.Show do
                 <div class="text-xs text-base-content/40 font-mono py-0.5">
                   🛠️ {message.content}
                 </div>
-              <% else if message.role == "system" && !usage_limit_message?(message.content) do %>
+              <% else %>
+              <%= if message.role == "system" && !usage_limit_message?(message.content) do %>
                 <div class="text-xs text-base-content/40 font-mono py-0.5">
                   ⚙️ {message.content}
                 </div>
@@ -279,6 +280,7 @@ defmodule ForemanWeb.TaskLive.Show do
                   </div>
                   <div class="whitespace-pre-wrap break-words">{message.content}</div>
                 </div>
+              <% end %>
               <% end %>
             <% end %>
           </div>
