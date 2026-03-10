@@ -296,6 +296,13 @@ defmodule ForemanWeb.TaskLive.Show do
               <% end %>
               <% end %>
             <% end %>
+            <%= if @task.status == "in_progress" do %>
+              <div class="flex items-center gap-1 px-1 py-2">
+                <div class="w-2 h-2 rounded-full bg-base-content/30 animate-bounce" style="animation-delay: 0ms"></div>
+                <div class="w-2 h-2 rounded-full bg-base-content/30 animate-bounce" style="animation-delay: 150ms"></div>
+                <div class="w-2 h-2 rounded-full bg-base-content/30 animate-bounce" style="animation-delay: 300ms"></div>
+              </div>
+            <% end %>
           </div>
 
           <%!-- Chat Input --%>
