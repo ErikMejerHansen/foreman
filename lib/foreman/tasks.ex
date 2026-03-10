@@ -357,35 +357,47 @@ defmodule Foreman.Tasks do
     end
   end
 
+  defp generate_summary(%Task{session_id: nil} = task) do
+    require Logger
+    Logger.warning("Cannot generate summary for task #{task.id}: no session_id")
+    {:ok, task}
+  end
+
   defp generate_summary(%Task{} = task) do
-    messages = Foreman.Chat.list_messages(task.id)
+    claude_path =
+      [
+        System.find_executable("claude"),
+        Path.expand("~/.claude/local/bin/claude"),
+        Path.expand("~/.local/bin/claude"),
+        "/usr/local/bin/claude",
+        "/opt/homebrew/bin/claude"
+      ]
+      |> Enum.find(fn path -> path && File.exists?(path) end)
 
-    chat_excerpt =
-      messages
-      |> Enum.take(-20)
-      |> Enum.map(fn m -> "#{m.role}: #{String.slice(m.content, 0, 300)}" end)
-      |> Enum.join("\n")
+    if is_nil(claude_path) do
+      require Logger
+      Logger.warning("Failed to generate summary for task #{task.id}: claude CLI not found")
+      {:ok, task}
+    else
+      prompt = "Please summarize what you accomplished in this task in 2-3 sentences."
 
-    summary_prompt =
-      "Summarize what was accomplished in this task in 2-3 sentences. " <>
-        "Task title: #{task.title}\n" <>
-        "Task instructions: #{String.slice(task.instructions, 0, 500)}\n" <>
-        "Recent chat:\n#{chat_excerpt}"
+      case System.cmd(
+             claude_path,
+             ["-p", prompt, "--resume", task.session_id],
+             stderr_to_stdout: true
+           ) do
+        {summary, 0} ->
+          summary = String.trim(summary)
 
-    case System.cmd("claude", ["-p", summary_prompt],
-           stderr_to_stdout: true
-         ) do
-      {summary, 0} ->
-        summary = String.trim(summary)
+          task
+          |> Task.changeset(%{summary: summary})
+          |> Repo.update()
 
-        task
-        |> Task.changeset(%{summary: summary})
-        |> Repo.update()
-
-      {error, _code} ->
-        require Logger
-        Logger.warning("Failed to generate summary for task #{task.id}: #{error}")
-        {:ok, task}
+        {error, _code} ->
+          require Logger
+          Logger.warning("Failed to generate summary for task #{task.id}: #{error}")
+          {:ok, task}
+      end
     end
   end
 
