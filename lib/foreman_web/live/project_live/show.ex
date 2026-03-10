@@ -268,6 +268,8 @@ defmodule ForemanWeb.ProjectLive.Show do
               if status == "done" && !@show_all_done,
                 do: Enum.take(all_status_tasks, -8),
                 else: all_status_tasks %>
+            <% displayed_tasks =
+              if status == "done", do: Enum.reverse(displayed_tasks), else: displayed_tasks %>
             <% hidden_count = length(all_status_tasks) - length(displayed_tasks) %>
             <div class={"flex flex-col w-80 rounded-lg border #{status_color(status)}"}>
               <%!-- Column Header --%>
@@ -286,14 +288,6 @@ defmodule ForemanWeb.ProjectLive.Show do
                 phx-hook="Sortable"
                 data-status={status}
               >
-                <%= if hidden_count > 0 do %>
-                  <button
-                    phx-click="toggle_show_all_done"
-                    class="w-full text-xs text-base-content/50 hover:text-base-content py-1.5 text-center rounded border border-dashed border-base-300 hover:border-base-content/30 transition-colors"
-                  >
-                    + {hidden_count} older tasks
-                  </button>
-                <% end %>
                 <%= for task <- displayed_tasks do %>
                   <div
                     class="bg-base-100 rounded-lg shadow-sm border border-base-300 p-3 cursor-pointer hover:shadow-md transition-shadow group relative"
@@ -318,6 +312,14 @@ defmodule ForemanWeb.ProjectLive.Show do
                       <% end %>
                     </.link>
                   </div>
+                <% end %>
+                <%= if hidden_count > 0 do %>
+                  <button
+                    phx-click="toggle_show_all_done"
+                    class="w-full text-xs text-base-content/50 hover:text-base-content py-1.5 text-center rounded border border-dashed border-base-300 hover:border-base-content/30 transition-colors"
+                  >
+                    + {hidden_count} older tasks
+                  </button>
                 <% end %>
                 <%= if status == "done" && @show_all_done && length(all_status_tasks) > 8 do %>
                   <button
