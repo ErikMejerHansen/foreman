@@ -265,6 +265,10 @@ defmodule ForemanWeb.TaskLive.Show do
                 <div class="text-xs text-base-content/40 font-mono py-0.5">
                   🛠️ {message.content}
                 </div>
+              <% else if message.role == "system" && !usage_limit_message?(message.content) do %>
+                <div class="text-xs text-base-content/40 font-mono py-0.5">
+                  ⚙️ {message.content}
+                </div>
               <% else %>
                 <div class={[
                   "rounded-lg p-3 text-sm",
@@ -343,6 +347,12 @@ defmodule ForemanWeb.TaskLive.Show do
       </div>
     </div>
     """
+  end
+
+  defp usage_limit_message?(content) do
+    content = String.downcase(content)
+    String.contains?(content, "usage limit") or String.contains?(content, "rate limit") or
+      String.contains?(content, "quota")
   end
 
   defp message_class("user"), do: "bg-info/10 border border-info/20 ml-8"
