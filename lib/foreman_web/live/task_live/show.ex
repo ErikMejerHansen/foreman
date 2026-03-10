@@ -274,13 +274,13 @@ defmodule ForemanWeb.TaskLive.Show do
               <%= if message.role == "tool_use" do %>
                 <div class="text-xs text-base-content/40 font-mono py-0.5 flex items-baseline gap-2">
                   <span>🛠️ {message.content}</span>
-                  <span class="opacity-50 shrink-0">{format_time(message.inserted_at)}</span>
+                  <time class="opacity-50 shrink-0" phx-hook="LocalTime" id={"time-#{message.id}"} datetime={format_time(message.inserted_at)}>{format_time(message.inserted_at)}</time>
                 </div>
               <% else %>
               <%= if message.role == "system" && !usage_limit_message?(message.content) do %>
                 <div class="text-xs text-base-content/40 font-mono py-0.5 flex items-baseline gap-2">
                   <span>⚙️ {message.content}</span>
-                  <span class="opacity-50 shrink-0">{format_time(message.inserted_at)}</span>
+                  <time class="opacity-50 shrink-0" phx-hook="LocalTime" id={"time-#{message.id}"} datetime={format_time(message.inserted_at)}>{format_time(message.inserted_at)}</time>
                 </div>
               <% else %>
                 <div class={[
@@ -289,7 +289,7 @@ defmodule ForemanWeb.TaskLive.Show do
                 ]}>
                   <div class="font-semibold text-xs mb-1 uppercase tracking-wide opacity-60 flex justify-between items-baseline">
                     <span>{message.role}</span>
-                    <span class="font-normal normal-case tracking-normal">{format_time(message.inserted_at)}</span>
+                    <time class="font-normal normal-case tracking-normal" phx-hook="LocalTime" id={"time-#{message.id}"} datetime={format_time(message.inserted_at)}>{format_time(message.inserted_at)}</time>
                   </div>
                   <div class="whitespace-pre-wrap break-words">{message.content}</div>
                 </div>
@@ -377,10 +377,7 @@ defmodule ForemanWeb.TaskLive.Show do
       String.contains?(content, "quota")
   end
 
-  defp format_time(%NaiveDateTime{hour: h, minute: m}) do
-    String.pad_leading("#{h}", 2, "0") <> ":" <> String.pad_leading("#{m}", 2, "0")
-  end
-
+  defp format_time(%NaiveDateTime{} = dt), do: NaiveDateTime.to_iso8601(dt)
   defp format_time(_), do: ""
 
   defp message_class("user"), do: "bg-info/10 border border-info/20 ml-8"
