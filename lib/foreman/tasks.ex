@@ -155,7 +155,9 @@ defmodule Foreman.Tasks do
   def move_to_todo(_task), do: {:error, "Can only move to todo from done"}
 
   def move_to_failed(%Task{} = task) do
-    Agent.Supervisor.stop_runner(task.id)
+    # Use spawn to avoid deadlock when called from within the runner itself:
+    # stop_runner is a blocking supervisor call, but the runner may be the one calling us.
+    spawn(fn -> Agent.Supervisor.stop_runner(task.id) end)
 
     {:ok, task} =
       task
