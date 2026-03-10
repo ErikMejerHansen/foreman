@@ -56,6 +56,12 @@ defmodule ForemanWeb.ProjectLive.Show do
   end
 
   @impl true
+  def handle_event("change_task", %{"task" => task_params}, socket) do
+    changeset = Tasks.change_task(%Task{}, task_params)
+    {:noreply, assign(socket, :task_changeset, changeset)}
+  end
+
+  @impl true
   def handle_event("save_task", params, socket) do
     task_params =
       params
@@ -211,13 +217,13 @@ defmodule ForemanWeb.ProjectLive.Show do
             phx-click-away="cancel_new_task"
           >
             <h2 class="text-lg font-semibold mb-4">New Task</h2>
-            <.form for={@task_changeset} phx-submit="save_task" class="space-y-4">
+            <.form for={@task_changeset} phx-submit="save_task" phx-change="change_task" class="space-y-4">
               <div>
                 <label class="block text-sm font-medium text-base-content">Title</label>
                 <input
                   type="text"
                   name="task[title]"
-                  value=""
+                  value={Ecto.Changeset.get_field(@task_changeset, :title) || ""}
                   class="mt-1 block w-full rounded border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary px-3 py-2"
                   placeholder="Fix login bug"
                   required
@@ -231,7 +237,7 @@ defmodule ForemanWeb.ProjectLive.Show do
                   class="mt-1 block w-full rounded border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary px-3 py-2"
                   placeholder="Describe what the agent should do..."
                   required
-                ></textarea>
+                >{Ecto.Changeset.get_field(@task_changeset, :instructions) || ""}</textarea>
               </div>
               <div class="flex items-center justify-between">
                 <label class="flex items-center gap-2 cursor-pointer text-sm">
