@@ -27,12 +27,14 @@ import topbar from "../vendor/topbar"
 import SortableHook from "./hooks/sortable"
 import ScrollBottomHook from "./hooks/scroll_bottom"
 import CmdEnterSubmitHook from "./hooks/cmd_enter_submit"
+import LocalTimeHook from "./hooks/local_time"
 
 const Hooks = {
   ...colocatedHooks,
   Sortable: SortableHook,
   ScrollBottom: ScrollBottomHook,
   CmdEnterSubmit: CmdEnterSubmitHook,
+  LocalTime: LocalTimeHook,
 }
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
