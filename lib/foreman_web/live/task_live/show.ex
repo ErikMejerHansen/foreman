@@ -221,40 +221,39 @@ defmodule ForemanWeb.TaskLive.Show do
       <div class="flex-1 flex overflow-hidden">
         <%!-- Left: Instructions + Chat --%>
         <div class="flex-1 flex flex-col border-r">
-          <%!-- Instructions --%>
-          <div class="p-4 border-b border-base-300 bg-base-200">
-            <h2 class="text-sm font-semibold text-base-content/70 mb-2">Instructions</h2>
-            <p class="text-sm whitespace-pre-wrap">{@task.instructions}</p>
-            <%= if @task.status == "todo" do %>
-              <button
-                phx-click="start_task"
-                class="mt-3 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm"
-              >
-                Start Task
-              </button>
-            <% end %>
-            <%= if @task.status == "failed" do %>
-              <div class="mt-3 flex gap-2">
-                <%= if @task.session_id do %>
-                  <button
-                    phx-click="resume_task"
-                    class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm"
-                  >
-                    Resume Session
-                  </button>
-                <% end %>
-                <button
-                  phx-click="retry_task"
-                  class="bg-base-300 text-base-content px-4 py-2 rounded hover:bg-base-400 text-sm"
-                >
-                  Restart Fresh
-                </button>
-              </div>
-            <% end %>
-          </div>
-
           <%!-- Chat Messages --%>
           <div class="flex-1 overflow-y-auto p-4 space-y-3" id="chat-messages" phx-hook="ScrollBottom">
+            <%!-- Instructions --%>
+            <div class="p-4 rounded-lg border border-base-300 bg-base-200 mb-2">
+              <h2 class="text-sm font-semibold text-base-content/70 mb-2">Instructions</h2>
+              <p class="text-sm whitespace-pre-wrap">{@task.instructions}</p>
+              <%= if @task.status == "todo" do %>
+                <button
+                  phx-click="start_task"
+                  class="mt-3 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm"
+                >
+                  Start Task
+                </button>
+              <% end %>
+              <%= if @task.status == "failed" do %>
+                <div class="mt-3 flex gap-2">
+                  <%= if @task.session_id do %>
+                    <button
+                      phx-click="resume_task"
+                      class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm"
+                    >
+                      Resume Session
+                    </button>
+                  <% end %>
+                  <button
+                    phx-click="retry_task"
+                    class="bg-base-300 text-base-content px-4 py-2 rounded hover:bg-base-400 text-sm"
+                  >
+                    Restart Fresh
+                  </button>
+                </div>
+              <% end %>
+            </div>
             <%= if @messages == [] && @task.status == "todo" do %>
               <p class="text-base-content/40 text-center py-8">
                 Start this task to begin the conversation with the agent.
