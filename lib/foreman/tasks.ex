@@ -366,6 +366,8 @@ defmodule Foreman.Tasks do
   end
 
   defp generate_summary(%Task{} = task) do
+    require Logger
+
     claude_path =
       [
         System.find_executable("claude"),
@@ -377,27 +379,55 @@ defmodule Foreman.Tasks do
       |> Enum.find(fn path -> path && File.exists?(path) end)
 
     if is_nil(claude_path) do
-      require Logger
       Logger.warning("Failed to generate summary for task #{task.id}: claude CLI not found")
       {:ok, task}
     else
       prompt = "Please summarize what you accomplished in this task in 2-3 sentences."
 
+      Logger.debug(
+        "Generating summary for task #{task.id} (session: #{task.session_id}) using #{claude_path}"
+      )
+
       case System.cmd(
              claude_path,
-             ["-p", prompt, "--resume", task.session_id],
+             ["-p", prompt, "--resume", task.session_id, "--output-format", "stream-json"],
              stderr_to_stdout: true
            ) do
-        {summary, 0} ->
-          summary = String.trim(summary)
+        {output, 0} ->
+          Logger.debug("Summary claude output for task #{task.id}: #{output}")
 
-          task
-          |> Task.changeset(%{summary: summary})
-          |> Repo.update()
+          summary =
+            output
+            |> String.split("\n", trim: true)
+            |> Enum.find_value(fn line ->
+              case Jason.decode(line) do
+                {:ok, %{"type" => "result", "result" => text}} when is_binary(text) ->
+                  String.trim(text)
 
-        {error, _code} ->
-          require Logger
-          Logger.warning("Failed to generate summary for task #{task.id}: #{error}")
+                _ ->
+                  nil
+              end
+            end)
+
+          if summary && summary != "" do
+            Logger.info("Saving summary for task #{task.id}: #{String.slice(summary, 0, 80)}...")
+
+            task
+            |> Task.changeset(%{summary: summary})
+            |> Repo.update()
+          else
+            Logger.warning(
+              "No result found in summary output for task #{task.id}. Full output: #{output}"
+            )
+
+            {:ok, task}
+          end
+
+        {output, code} ->
+          Logger.warning(
+            "Failed to generate summary for task #{task.id} (exit #{code}): #{output}"
+          )
+
           {:ok, task}
       end
     end
