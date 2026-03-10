@@ -21,6 +21,8 @@ mix format             # Format code
 mix precommit          # Full pre-commit check (compile, format, test)
 ```
 
+**When working inside a git worktree**, run `mix deps.get` before `mix compile` — each worktree has an independent `_build` directory and compilation will fail without it.
+
 ## Architecture
 
 ### Database (3 tables, all UUID PKs)
