@@ -2,7 +2,7 @@ defmodule Foreman.Agent.Runner do
   use GenServer
   require Logger
 
-  defstruct [:task_id, :port, :session_id, :buffer, :worktree_path]
+  defstruct [:task_id, :port, :session_id, :buffer, :worktree_path, seen_uuids: MapSet.new()]
 
   def start_link(args) do
     GenServer.start_link(__MODULE__, args,
@@ -257,6 +257,21 @@ defmodule Foreman.Agent.Runner do
   defp process_stream_line(state, line) do
     Logger.debug("Claude raw message (task #{state.task_id}): #{line}")
 
+    case Jason.decode(line) do
+      {:ok, %{"uuid" => uuid}} when is_binary(uuid) and uuid != "" ->
+        if MapSet.member?(state.seen_uuids, uuid) do
+          Logger.debug("Skipping duplicate message uuid=#{uuid} for task #{state.task_id}")
+          state
+        else
+          process_decoded_line(%{state | seen_uuids: MapSet.put(state.seen_uuids, uuid)}, line)
+        end
+
+      _ ->
+        process_decoded_line(state, line)
+    end
+  end
+
+  defp process_decoded_line(state, line) do
     case Jason.decode(line) do
       {:ok, %{"type" => "assistant", "message" => %{"content" => content}}} ->
         thinking = extract_thinking(content)
