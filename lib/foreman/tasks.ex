@@ -211,13 +211,25 @@ defmodule Foreman.Tasks do
   end
 
   def update_result_metadata(task_id, metadata) do
-    sets =
-      metadata
-      |> Enum.filter(fn {_k, v} -> v != nil end)
-      |> Enum.map(fn {k, v} -> {k, v} end)
+    cost = metadata[:total_cost_usd] || 0.0
+    input_tokens = metadata[:total_input_tokens] || 0
+    output_tokens = metadata[:total_output_tokens] || 0
+    turns = metadata[:num_turns] || 0
+    duration = metadata[:duration_ms] || 0
 
-    from(t in Task, where: t.id == ^task_id)
-    |> Repo.update_all(set: sets)
+    from(t in Task,
+      where: t.id == ^task_id,
+      update: [
+        set: [
+          total_cost_usd: fragment("COALESCE(total_cost_usd, 0.0) + ?", ^cost),
+          total_input_tokens: fragment("COALESCE(total_input_tokens, 0) + ?", ^input_tokens),
+          total_output_tokens: fragment("COALESCE(total_output_tokens, 0) + ?", ^output_tokens),
+          num_turns: fragment("COALESCE(num_turns, 0) + ?", ^turns),
+          duration_ms: fragment("COALESCE(duration_ms, 0) + ?", ^duration)
+        ]
+      ]
+    )
+    |> Repo.update_all([])
 
     :ok
   end
