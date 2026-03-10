@@ -111,7 +111,7 @@ defmodule ForemanWeb.ProjectLive.Index do
           </p>
         <% end %>
         <%= for project <- @projects do %>
-          <div class="bg-base-100 rounded-lg shadow p-6 hover:shadow-md transition-shadow">
+          <div class="bg-base-100 rounded-lg shadow p-6 hover:shadow-md transition-shadow border border-base-content/15">
             <div class="flex justify-between items-center">
               <.link navigate={~p"/projects/#{project.id}"} class="flex-1">
                 <h2 class="text-lg font-semibold">{project.name}</h2>
