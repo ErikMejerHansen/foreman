@@ -11,7 +11,7 @@ const LocalTimeHook = {
     const datetime = this.el.getAttribute("datetime")
     if (!datetime) return
     const date = new Date(datetime + "Z")
-    this.el.textContent = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    this.el.textContent = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })
   }
 }
 
