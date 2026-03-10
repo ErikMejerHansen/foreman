@@ -360,7 +360,7 @@ defmodule Foreman.Tasks do
         "Task instructions: #{String.slice(task.instructions, 0, 500)}\n" <>
         "Recent chat:\n#{chat_excerpt}"
 
-    case System.cmd("claude", ["-p", summary_prompt, "--max-tokens", "200"],
+    case System.cmd("claude", ["-p", summary_prompt],
            stderr_to_stdout: true
          ) do
       {summary, 0} ->
