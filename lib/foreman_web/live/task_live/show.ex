@@ -196,7 +196,18 @@ defmodule ForemanWeb.TaskLive.Show do
             {status_label(@task.status)}
           </span>
           <%= if @task.branch_name do %>
-            <span class="text-sm text-info font-mono">{@task.branch_name}</span>
+            <span class="text-sm text-info font-mono flex items-center gap-1">
+              {@task.branch_name}
+              <%= if @task.worktree_path do %>
+                <button
+                  class="text-base-content/40 hover:text-base-content hover:bg-base-200 p-0.5 rounded transition-colors"
+                  onclick={"navigator.clipboard.writeText('#{@task.worktree_path}')"}
+                  title={"Copy worktree path: #{@task.worktree_path}"}
+                >
+                  <.icon name="hero-document-duplicate" class="w-3.5 h-3.5" />
+                </button>
+              <% end %>
+            </span>
           <% end %>
           <%= if @task.total_cost_usd do %>
             <span class="text-xs text-base-content/50 font-mono">
