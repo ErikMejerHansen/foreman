@@ -217,7 +217,7 @@ defmodule ForemanWeb.ProjectLive.Show do
             phx-click-away="cancel_new_task"
           >
             <h2 class="text-lg font-semibold mb-4">New Task</h2>
-            <.form for={@task_changeset} phx-submit="save_task" phx-change="change_task" class="space-y-4">
+            <.form for={@task_changeset} phx-submit="save_task" phx-change="change_task" class="space-y-4" phx-hook="CmdEnterSubmit" id="new-task-form">
               <div>
                 <label class="block text-sm font-medium text-base-content">Title</label>
                 <input

@@ -26,11 +26,13 @@ import {hooks as colocatedHooks} from "phoenix-colocated/foreman"
 import topbar from "../vendor/topbar"
 import SortableHook from "./hooks/sortable"
 import ScrollBottomHook from "./hooks/scroll_bottom"
+import CmdEnterSubmitHook from "./hooks/cmd_enter_submit"
 
 const Hooks = {
   ...colocatedHooks,
   Sortable: SortableHook,
   ScrollBottom: ScrollBottomHook,
+  CmdEnterSubmit: CmdEnterSubmitHook,
 }
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
