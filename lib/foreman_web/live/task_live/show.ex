@@ -102,6 +102,19 @@ defmodule ForemanWeb.TaskLive.Show do
   end
 
   @impl true
+  def handle_event("resume_task", _params, socket) do
+    task = socket.assigns.task
+
+    case Tasks.resume_task(task) do
+      {:ok, task} ->
+        {:noreply, assign(socket, :task, task)}
+
+      {:error, reason} ->
+        {:noreply, put_flash(socket, :error, "#{reason}")}
+    end
+  end
+
+  @impl true
   def handle_event("retry_task", _params, socket) do
     task = socket.assigns.task
 
@@ -221,12 +234,22 @@ defmodule ForemanWeb.TaskLive.Show do
               </button>
             <% end %>
             <%= if @task.status == "failed" do %>
-              <button
-                phx-click="retry_task"
-                class="mt-3 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm"
-              >
-                Retry Task
-              </button>
+              <div class="mt-3 flex gap-2">
+                <%= if @task.session_id do %>
+                  <button
+                    phx-click="resume_task"
+                    class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm"
+                  >
+                    Resume Session
+                  </button>
+                <% end %>
+                <button
+                  phx-click="retry_task"
+                  class="bg-base-300 text-base-content px-4 py-2 rounded hover:bg-base-400 text-sm"
+                >
+                  Restart Fresh
+                </button>
+              </div>
             <% end %>
           </div>
 

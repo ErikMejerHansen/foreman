@@ -167,7 +167,18 @@ defmodule Foreman.Tasks do
     {:ok, task}
   end
 
+  def resume_task(%Task{status: "failed", session_id: session_id} = task)
+      when not is_nil(session_id) do
+    start_agent(task, task.branch_name, task.worktree_path,
+      prompt: "Please continue from where you left off."
+    )
+  end
+
+  def resume_task(_task), do: {:error, "Can only resume failed tasks that have a session"}
+
   def retry_failed(%Task{status: "failed"} = task) do
+    # Clear session_id for a fresh start without --resume
+    {:ok, task} = task |> Task.changeset(%{session_id: nil}) |> Repo.update()
     move_to_in_progress(task)
   end
 
