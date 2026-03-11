@@ -129,8 +129,9 @@ defmodule Foreman.Tasks do
     if status == "review" and project.knowledge_sharing and is_nil(task.summary) do
       start_summarizing(task)
     else
-      # Stop the runner if still alive
-      Agent.Supervisor.stop_runner(task.id)
+      # Use spawn to avoid deadlock when called from within the runner itself
+      # (e.g. summarizing runner calls finish_summarizing → move_to_done)
+      spawn(fn -> Agent.Supervisor.stop_runner(task.id) end)
 
       with :ok <- Git.rebase_from_main(task.worktree_path),
            :ok <- Git.merge_to_main(project.repo_path, task.branch_name),
