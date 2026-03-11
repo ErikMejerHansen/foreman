@@ -113,7 +113,13 @@ defmodule Foreman.Tasks do
 
     broadcast_project(task.project_id, {:task_updated, task})
     broadcast_task(task.id, {:status_changed, "review"})
+    notify_review(task)
     {:ok, task}
+  end
+
+  defp notify_review(%Task{title: title}) do
+    script = ~s[display notification "#{title}" with title "Foreman: Ready for Review"]
+    System.cmd("osascript", ["-e", script], stderr_to_stdout: true)
   end
 
   def move_to_done(%Task{status: status} = task) when status in ["review", "summarizing"] do
