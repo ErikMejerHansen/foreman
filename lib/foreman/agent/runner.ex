@@ -2,7 +2,7 @@ defmodule Foreman.Agent.Runner do
   use GenServer
   require Logger
 
-  defstruct [:task_id, :port, :session_id, :buffer, :worktree_path, seen_uuids: MapSet.new()]
+  defstruct [:task_id, :port, :session_id, :buffer, :worktree_path, mode: :normal, seen_uuids: MapSet.new()]
 
   def start_link(args) do
     GenServer.start_link(__MODULE__, args,
@@ -22,6 +22,7 @@ defmodule Foreman.Agent.Runner do
       task_id: task_id,
       worktree_path: worktree_path,
       session_id: Map.get(args, :session_id),
+      mode: Map.get(args, :mode, :normal),
       buffer: ""
     }
 
@@ -136,14 +137,21 @@ defmodule Foreman.Agent.Runner do
         state
       end
 
-    Foreman.Chat.create_message(%{
-      "task_id" => state.task_id,
-      "role" => "system",
-      "content" => "Agent exited with code #{code}"
-    })
+    if state.mode == :summarizing do
+      # Summary agent crashed — move to done without summary
+      Logger.warning("Summary agent crashed for task #{state.task_id}, moving to done without summary")
+      task = Foreman.Tasks.get_task!(state.task_id)
+      Foreman.Tasks.move_to_done(task)
+    else
+      Foreman.Chat.create_message(%{
+        "task_id" => state.task_id,
+        "role" => "system",
+        "content" => "Agent exited with code #{code}"
+      })
 
-    task = Foreman.Tasks.get_task!(state.task_id)
-    Foreman.Tasks.move_to_failed(task)
+      task = Foreman.Tasks.get_task!(state.task_id)
+      Foreman.Tasks.move_to_failed(task)
+    end
 
     {:stop, :normal, %{state | port: nil, buffer: ""}}
   end
@@ -320,36 +328,57 @@ defmodule Foreman.Agent.Runner do
         Foreman.Tasks.update_session_id(state.task_id, session_id)
         save_result_metadata(state.task_id, result)
 
-        if error_text != "" do
-          Foreman.Chat.create_message(%{
-            "task_id" => state.task_id,
-            "role" => "system",
-            "content" => error_text
-          })
-        end
+        if state.mode == :summarizing do
+          # Summary failed — move to done without summary
+          Logger.warning("Summary agent errored for task #{state.task_id}, moving to done without summary")
+          task = Foreman.Tasks.get_task!(state.task_id)
+          Foreman.Tasks.move_to_done(task)
+        else
+          if error_text != "" do
+            Foreman.Chat.create_message(%{
+              "task_id" => state.task_id,
+              "role" => "system",
+              "content" => error_text
+            })
+          end
 
-        task = Foreman.Tasks.get_task!(state.task_id)
-        Foreman.Tasks.move_to_failed(task)
+          task = Foreman.Tasks.get_task!(state.task_id)
+          Foreman.Tasks.move_to_failed(task)
+        end
 
         %{state | session_id: session_id}
 
       # Result: success with text
       {:ok, %{"type" => "result", "session_id" => session_id} = result} ->
         result_text = result["result"]
-        Logger.info("Claude result for task #{state.task_id}, session: #{session_id}")
+        Logger.info("Claude result for task #{state.task_id}, session: #{session_id}, mode: #{state.mode}")
         Foreman.Tasks.update_session_id(state.task_id, session_id)
         save_result_metadata(state.task_id, result)
 
-        if result_text && result_text != "" do
-          Foreman.Chat.create_message(%{
-            "task_id" => state.task_id,
-            "role" => "assistant",
-            "content" => result_text
-          })
-        end
+        if state.mode == :summarizing do
+          # In summarizing mode, save the result as the task summary and finish
+          summary = if result_text && result_text != "", do: String.trim(result_text), else: nil
 
-        task = Foreman.Tasks.get_task!(state.task_id)
-        Foreman.Tasks.move_to_review(task)
+          if summary do
+            Logger.info("Summary for task #{state.task_id}: #{String.slice(summary, 0, 80)}...")
+            Foreman.Tasks.finish_summarizing(state.task_id, summary)
+          else
+            Logger.warning("Empty summary for task #{state.task_id}, moving to done without summary")
+            task = Foreman.Tasks.get_task!(state.task_id)
+            Foreman.Tasks.move_to_done(task)
+          end
+        else
+          if result_text && result_text != "" do
+            Foreman.Chat.create_message(%{
+              "task_id" => state.task_id,
+              "role" => "assistant",
+              "content" => result_text
+            })
+          end
+
+          task = Foreman.Tasks.get_task!(state.task_id)
+          Foreman.Tasks.move_to_review(task)
+        end
 
         %{state | session_id: session_id}
 

@@ -155,21 +155,32 @@ defmodule ForemanWeb.ProjectLive.Show do
     Enum.filter(tasks, &(&1.status == status))
   end
 
+  defp kanban_columns(%{knowledge_sharing: true}) do
+    ~w(todo in_progress review summarizing done failed)
+  end
+
+  defp kanban_columns(_project) do
+    ~w(todo in_progress review done failed)
+  end
+
   defp status_color("todo"), do: "bg-base-200 border-base-300"
   defp status_color("in_progress"), do: "bg-info/10 border-info/30"
   defp status_color("review"), do: "bg-warning/10 border-warning/30"
+  defp status_color("summarizing"), do: "bg-secondary/10 border-secondary/30"
   defp status_color("done"), do: "bg-success/10 border-success/30"
   defp status_color("failed"), do: "bg-error/10 border-error/30"
 
   defp status_label("todo"), do: "To Do"
   defp status_label("in_progress"), do: "In Progress"
   defp status_label("review"), do: "Review"
+  defp status_label("summarizing"), do: "Summarizing"
   defp status_label("done"), do: "Done"
   defp status_label("failed"), do: "Failed"
 
   defp status_icon("todo"), do: "○"
   defp status_icon("in_progress"), do: "◉"
   defp status_icon("review"), do: "◎"
+  defp status_icon("summarizing"), do: "◇"
   defp status_icon("done"), do: "●"
   defp status_icon("failed"), do: "✕"
 
@@ -268,7 +279,7 @@ defmodule ForemanWeb.ProjectLive.Show do
       <%!-- Kanban Board --%>
       <div class="flex-1 overflow-x-auto p-6">
         <div class="flex gap-4 h-full min-w-max">
-          <%= for status <- ~w(todo in_progress review done failed) do %>
+          <%= for status <- kanban_columns(@project) do %>
             <% all_status_tasks = tasks_by_status(@tasks, status) %>
             <% displayed_tasks =
               if status == "done" && !@show_all_done,
