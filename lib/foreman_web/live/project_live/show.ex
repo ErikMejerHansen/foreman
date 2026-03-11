@@ -151,16 +151,20 @@ defmodule ForemanWeb.ProjectLive.Show do
     {:noreply, assign(socket, :tasks, tasks)}
   end
 
+  defp tasks_by_status(tasks, "todo") do
+    Enum.filter(tasks, &(&1.status in ["todo", "failed"]))
+  end
+
   defp tasks_by_status(tasks, status) do
     Enum.filter(tasks, &(&1.status == status))
   end
 
   defp kanban_columns(%{knowledge_sharing: true}) do
-    ~w(todo in_progress review summarizing done failed)
+    ~w(todo in_progress review summarizing done)
   end
 
   defp kanban_columns(_project) do
-    ~w(todo in_progress review done failed)
+    ~w(todo in_progress review done)
   end
 
   defp status_color("todo"), do: "bg-base-200 border-base-300"
@@ -168,21 +172,18 @@ defmodule ForemanWeb.ProjectLive.Show do
   defp status_color("review"), do: "bg-warning/10 border-warning/30"
   defp status_color("summarizing"), do: "bg-secondary/10 border-secondary/30"
   defp status_color("done"), do: "bg-success/10 border-success/30"
-  defp status_color("failed"), do: "bg-error/10 border-error/30"
 
   defp status_label("todo"), do: "To Do"
   defp status_label("in_progress"), do: "In Progress"
   defp status_label("review"), do: "Review"
   defp status_label("summarizing"), do: "Summarizing"
   defp status_label("done"), do: "Done"
-  defp status_label("failed"), do: "Failed"
 
   defp status_icon("todo"), do: "○"
   defp status_icon("in_progress"), do: "◉"
   defp status_icon("review"), do: "◎"
   defp status_icon("summarizing"), do: "◇"
   defp status_icon("done"), do: "●"
-  defp status_icon("failed"), do: "✕"
 
   @impl true
   def render(assigns) do
@@ -307,7 +308,13 @@ defmodule ForemanWeb.ProjectLive.Show do
               >
                 <%= for task <- displayed_tasks do %>
                   <div
-                    class="bg-base-100 rounded-lg shadow-sm border border-base-300 p-3 cursor-pointer hover:shadow-md transition-shadow group relative"
+                    class={[
+                      "rounded-lg shadow-sm border p-3 cursor-pointer hover:shadow-md transition-shadow group relative",
+                      if(task.status == "failed",
+                        do: "bg-error/10 border-error/40",
+                        else: "bg-base-100 border-base-300"
+                      )
+                    ]}
                     id={"task-#{task.id}"}
                     data-task-id={task.id}
                   >
