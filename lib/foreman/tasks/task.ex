@@ -5,7 +5,7 @@ defmodule Foreman.Tasks.Task do
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
 
-  @statuses ~w(todo in_progress review done failed)
+  @statuses ~w(todo in_progress review summarizing done failed)
 
   schema "tasks" do
     field :title, :string

@@ -116,31 +116,76 @@ defmodule Foreman.Tasks do
     {:ok, task}
   end
 
-  def move_to_done(%Task{status: "review"} = task) do
+  def move_to_done(%Task{status: status} = task) when status in ["review", "summarizing"] do
     project = Foreman.Projects.get_project!(task.project_id)
 
-    # Stop the runner if still alive
-    Agent.Supervisor.stop_runner(task.id)
+    # If knowledge sharing is on and we haven't summarized yet, go through summarizing first
+    if status == "review" and project.knowledge_sharing and is_nil(task.summary) do
+      start_summarizing(task)
+    else
+      # Stop the runner if still alive
+      Agent.Supervisor.stop_runner(task.id)
 
-    with :ok <- Git.rebase_from_main(task.worktree_path),
-         :ok <- Git.merge_to_main(project.repo_path, task.branch_name),
-         :ok <- Git.remove_worktree(project.repo_path, task.worktree_path),
-         :ok <- Git.delete_branch(project.repo_path, task.branch_name) do
-      {:ok, task} =
-        task
-        |> Task.changeset(%{status: "done"})
-        |> Repo.update()
+      with :ok <- Git.rebase_from_main(task.worktree_path),
+           :ok <- Git.merge_to_main(project.repo_path, task.branch_name),
+           :ok <- Git.remove_worktree(project.repo_path, task.worktree_path),
+           :ok <- Git.delete_branch(project.repo_path, task.branch_name) do
+        {:ok, task} =
+          task
+          |> Task.changeset(%{status: "done"})
+          |> Repo.update()
 
-      # Generate summary in background (don't block the done transition)
-      spawn(fn -> maybe_generate_summary(task) end)
-
-      broadcast_project(task.project_id, {:task_updated, task})
-      broadcast_task(task.id, {:status_changed, "done"})
-      {:ok, task}
+        broadcast_project(task.project_id, {:task_updated, task})
+        broadcast_task(task.id, {:status_changed, "done"})
+        {:ok, task}
+      end
     end
   end
 
-  def move_to_done(_task), do: {:error, "Can only move to done from review"}
+  def move_to_done(_task), do: {:error, "Can only move to done from review or summarizing"}
+
+  defp start_summarizing(%Task{} = task) do
+    # Stop the current runner if alive — we'll start a fresh one with --resume
+    Agent.Supervisor.stop_runner(task.id)
+
+    {:ok, task} =
+      task
+      |> Task.changeset(%{status: "summarizing"})
+      |> Repo.update()
+
+    broadcast_project(task.project_id, {:task_updated, task})
+    broadcast_task(task.id, {:status_changed, "summarizing"})
+
+    prompt = "Please summarize what you accomplished in this task in 2-3 sentences. Be concise."
+
+    case Agent.Supervisor.start_runner(%{
+           task_id: task.id,
+           worktree_path: task.worktree_path,
+           prompt: prompt,
+           session_id: task.session_id,
+           skip_chat_message: true,
+           mode: :summarizing
+         }) do
+      {:ok, _pid} -> :ok
+      {:error, reason} ->
+        require Logger
+        Logger.error("Failed to start summarizing agent for task #{task.id}: #{inspect(reason)}")
+    end
+
+    {:ok, task}
+  end
+
+  def finish_summarizing(task_id, summary_text) do
+    task = get_task!(task_id)
+
+    {:ok, task} =
+      task
+      |> Task.changeset(%{summary: summary_text})
+      |> Repo.update()
+
+    # Now do the actual done transition
+    move_to_done(task)
+  end
 
   def move_to_todo(%Task{status: "done"} = task) do
     {:ok, task} =
@@ -347,90 +392,6 @@ defmodule Foreman.Tasks do
       end
 
     Enum.join(sections, "\n") <> "\n"
-  end
-
-  defp maybe_generate_summary(%Task{} = task) do
-    project = Foreman.Projects.get_project!(task.project_id)
-
-    if project.knowledge_sharing do
-      generate_summary(task)
-    else
-      {:ok, task}
-    end
-  end
-
-  defp generate_summary(%Task{session_id: nil} = task) do
-    require Logger
-    Logger.warning("Cannot generate summary for task #{task.id}: no session_id")
-    {:ok, task}
-  end
-
-  defp generate_summary(%Task{} = task) do
-    require Logger
-
-    claude_path =
-      [
-        System.find_executable("claude"),
-        Path.expand("~/.claude/local/bin/claude"),
-        Path.expand("~/.local/bin/claude"),
-        "/usr/local/bin/claude",
-        "/opt/homebrew/bin/claude"
-      ]
-      |> Enum.find(fn path -> path && File.exists?(path) end)
-
-    if is_nil(claude_path) do
-      Logger.warning("Failed to generate summary for task #{task.id}: claude CLI not found")
-      {:ok, task}
-    else
-      prompt = "Please summarize what you accomplished in this task in 2-3 sentences."
-
-      Logger.debug(
-        "Generating summary for task #{task.id} (session: #{task.session_id}) using #{claude_path}"
-      )
-
-      case System.cmd(
-             claude_path,
-             ["-p", prompt, "--resume", task.session_id, "--output-format", "stream-json"],
-             stderr_to_stdout: true
-           ) do
-        {output, 0} ->
-          Logger.debug("Summary claude output for task #{task.id}: #{output}")
-
-          summary =
-            output
-            |> String.split("\n", trim: true)
-            |> Enum.find_value(fn line ->
-              case Jason.decode(line) do
-                {:ok, %{"type" => "result", "result" => text}} when is_binary(text) ->
-                  String.trim(text)
-
-                _ ->
-                  nil
-              end
-            end)
-
-          if summary && summary != "" do
-            Logger.info("Saving summary for task #{task.id}: #{String.slice(summary, 0, 80)}...")
-
-            task
-            |> Task.changeset(%{summary: summary})
-            |> Repo.update()
-          else
-            Logger.warning(
-              "No result found in summary output for task #{task.id}. Full output: #{output}"
-            )
-
-            {:ok, task}
-          end
-
-        {output, code} ->
-          Logger.warning(
-            "Failed to generate summary for task #{task.id} (exit #{code}): #{output}"
-          )
-
-          {:ok, task}
-      end
-    end
   end
 
   defp slugify(title) do

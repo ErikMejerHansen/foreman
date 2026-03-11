@@ -164,12 +164,14 @@ defmodule ForemanWeb.TaskLive.Show do
   defp status_badge_class("todo"), do: "bg-base-200 text-base-content"
   defp status_badge_class("in_progress"), do: "bg-info/20 text-info"
   defp status_badge_class("review"), do: "bg-warning/20 text-warning"
+  defp status_badge_class("summarizing"), do: "bg-secondary/20 text-secondary"
   defp status_badge_class("done"), do: "bg-success/20 text-success"
   defp status_badge_class("failed"), do: "bg-error/20 text-error"
 
   defp status_label("todo"), do: "To Do"
   defp status_label("in_progress"), do: "In Progress"
   defp status_label("review"), do: "Review"
+  defp status_label("summarizing"), do: "Summarizing"
   defp status_label("done"), do: "Done"
   defp status_label("failed"), do: "Failed"
 
