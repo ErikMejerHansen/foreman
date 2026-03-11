@@ -123,6 +123,7 @@ defmodule Foreman.Tasks do
   end
 
   def move_to_done(%Task{status: status} = task) when status in ["review", "summarizing"] do
+    require Logger
     project = Foreman.Projects.get_project!(task.project_id)
 
     # If knowledge sharing is on and we haven't summarized yet, go through summarizing first
@@ -145,6 +146,10 @@ defmodule Foreman.Tasks do
         broadcast_project(task.project_id, {:task_updated, task})
         broadcast_task(task.id, {:status_changed, "done"})
         {:ok, task}
+      else
+        {:error, reason} ->
+          Logger.error("Failed to move task #{task.id} to done: #{inspect(reason)}")
+          {:error, reason}
       end
     end
   end
@@ -183,15 +188,30 @@ defmodule Foreman.Tasks do
   end
 
   def finish_summarizing(task_id, summary_text) do
+    require Logger
     task = get_task!(task_id)
+    project = Foreman.Projects.get_project!(task.project_id)
 
-    {:ok, task} =
-      task
-      |> Task.changeset(%{summary: summary_text})
-      |> Repo.update()
+    # Use spawn to avoid deadlock when called from within the runner itself
+    spawn(fn -> Agent.Supervisor.stop_runner(task.id) end)
 
-    # Now do the actual done transition
-    move_to_done(task)
+    with :ok <- Git.rebase_from_main(task.worktree_path),
+         :ok <- Git.merge_to_main(project.repo_path, task.branch_name),
+         :ok <- Git.remove_worktree(project.repo_path, task.worktree_path),
+         :ok <- Git.delete_branch(project.repo_path, task.branch_name) do
+      {:ok, task} =
+        task
+        |> Task.changeset(%{summary: summary_text, status: "done"})
+        |> Repo.update()
+
+      broadcast_project(task.project_id, {:task_updated, task})
+      broadcast_task(task.id, {:status_changed, "done"})
+      {:ok, task}
+    else
+      {:error, reason} ->
+        Logger.error("Failed to complete task #{task_id} after summarizing: #{inspect(reason)}")
+        {:error, reason}
+    end
   end
 
   def move_to_todo(%Task{status: "done"} = task) do
