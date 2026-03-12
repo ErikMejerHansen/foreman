@@ -17,6 +17,7 @@ defmodule ForemanWeb.TaskLive.Show do
     end
 
     diff = load_diff(project, task)
+    current_todos = messages |> Enum.filter(&(&1.role == "todo")) |> List.last()
 
     {:ok,
      socket
@@ -26,7 +27,8 @@ defmodule ForemanWeb.TaskLive.Show do
      |> assign(:diff, diff)
      |> assign(:message_input, "")
      |> assign(:page_title, task.title)
-     |> assign(:merge_error, nil)}
+     |> assign(:merge_error, nil)
+     |> assign(:current_todos, current_todos)}
   end
 
   @impl true
@@ -131,6 +133,13 @@ defmodule ForemanWeb.TaskLive.Show do
   def handle_info({:new_message, message}, socket) do
     messages = socket.assigns.messages ++ [message]
     socket = assign(socket, :messages, messages)
+
+    socket =
+      if message.role == "todo" do
+        assign(socket, :current_todos, message)
+      else
+        socket
+      end
 
     socket =
       if socket.assigns.task.status == "in_progress" do
@@ -272,12 +281,9 @@ defmodule ForemanWeb.TaskLive.Show do
             <% end %>
             <%= for message <- @messages do %>
               <%= if message.role == "todo" do %>
-                <div class="rounded-lg p-3 text-sm bg-amber-500/10 border border-amber-500/30">
-                  <div class="font-semibold text-xs mb-2 uppercase tracking-wide opacity-60 flex justify-between items-baseline">
-                    <span>📋 Todo list</span>
-                    <time class="font-normal normal-case tracking-normal" phx-hook="LocalTime" id={"time-#{message.id}"} datetime={format_time(message.inserted_at)}>{format_time(message.inserted_at)}</time>
-                  </div>
-                  <div class="font-mono whitespace-pre-wrap text-xs">{message.content}</div>
+                <div class="text-xs text-base-content/30 font-mono py-0.5 flex items-baseline gap-2">
+                  <span>📋 todo list updated</span>
+                  <time class="opacity-50 shrink-0" phx-hook="LocalTime" id={"time-#{message.id}"} datetime={format_time(message.inserted_at)}>{format_time(message.inserted_at)}</time>
                 </div>
               <% else %>
               <%= if message.role == "tool_use" do %>
@@ -314,6 +320,14 @@ defmodule ForemanWeb.TaskLive.Show do
               </div>
             <% end %>
           </div>
+
+          <%!-- Sticky Todo Panel --%>
+          <%= if @current_todos do %>
+            <div class="border-t border-amber-500/20 bg-amber-500/5 px-4 py-2">
+              <div class="text-xs text-amber-600/60 font-semibold uppercase tracking-wide mb-1">📋 Todos</div>
+              <div class="font-mono text-xs text-base-content/60 whitespace-pre-wrap leading-relaxed">{@current_todos.content}</div>
+            </div>
+          <% end %>
 
           <%!-- Chat Input --%>
           <%= if can_chat?(@task.status) do %>
