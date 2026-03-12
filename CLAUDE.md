@@ -78,7 +78,7 @@ todo → in_progress → review → done
 
 ### Agent Runner Details
 
-- Spawns `claude -p --output-format stream-json --input-format stream-json --verbose --allowedTools Bash,Read,Edit,Write,Glob,Grep`
+- Spawns `claude -p --output-format stream-json --input-format stream-json --verbose --allowedTools Bash,Read,Edit,MultiEdit,Write,Glob,Grep,TodoWrite,TodoRead,WebFetch,WebSearch`
 - Initial prompt sent via stdin as stream-json (includes task title + instructions, plus knowledge sharing context if enabled)
 - Working directory set to the git worktree path
 - Parses stream-json output line by line, persists messages to DB

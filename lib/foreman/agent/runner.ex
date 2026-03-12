@@ -193,7 +193,7 @@ defmodule Foreman.Agent.Runner do
         "stream-json",
         "--verbose",
         "--allowedTools",
-        "Bash,Read,Edit,Write,Glob,Grep,TodoWrite,TodoRead"
+        "Bash,Read,Edit,MultiEdit,Write,Glob,Grep,TodoWrite,TodoRead,WebFetch,WebSearch"
       ]
 
     # Add --resume if we have a session_id from a previous run
