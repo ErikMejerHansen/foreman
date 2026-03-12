@@ -178,6 +178,12 @@ defmodule ForemanWeb.ProjectLive.Show do
           <span class="text-sm text-base-content/60 font-mono">{@project.repo_path}</span>
         </div>
         <div class="flex items-center gap-4">
+          <.link
+            navigate={~p"/projects/#{@project.id}/stats"}
+            class="text-base-content/60 hover:text-base-content text-sm"
+          >
+            Stats
+          </.link>
           <button
             phx-click="new_task"
             class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm"
