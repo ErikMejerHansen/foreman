@@ -193,7 +193,7 @@ defmodule Foreman.Agent.Runner do
         "stream-json",
         "--verbose",
         "--allowedTools",
-        "Bash,Read,Edit,Write,Glob,Grep"
+        "Bash,Read,Edit,Write,Glob,Grep,TodoWrite,TodoRead"
       ]
 
     # Add --resume if we have a session_id from a previous run
@@ -298,11 +298,11 @@ defmodule Foreman.Agent.Runner do
           })
         end
 
-        Enum.each(tool_uses, fn summary ->
+        Enum.each(tool_uses, fn {role, content} ->
           Foreman.Chat.create_message(%{
             "task_id" => state.task_id,
-            "role" => "tool_use",
-            "content" => summary
+            "role" => role,
+            "content" => content
           })
         end)
 
@@ -502,21 +502,41 @@ defmodule Foreman.Agent.Runner do
     |> Enum.map(fn tool ->
       name = tool["name"] || "unknown"
       input = tool["input"] || %{}
-      summarize_tool_use(name, input)
+      {role, summary} = summarize_tool_use(name, input)
+      {role, summary}
     end)
   end
 
   defp extract_tool_use(_), do: []
 
   defp summarize_tool_use("Bash", %{"command" => cmd}),
-    do: "Running Bash: #{String.slice(cmd, 0, 120)}"
+    do: {"tool_use", "Running Bash: #{String.slice(cmd, 0, 120)}"}
 
-  defp summarize_tool_use("Read", %{"file_path" => path}), do: "Reading #{path}"
-  defp summarize_tool_use("Edit", %{"file_path" => path}), do: "Editing #{path}"
-  defp summarize_tool_use("Write", %{"file_path" => path}), do: "Writing #{path}"
-  defp summarize_tool_use("Glob", %{"pattern" => pat}), do: "Searching files: #{pat}"
-  defp summarize_tool_use("Grep", %{"pattern" => pat}), do: "Searching content: #{pat}"
-  defp summarize_tool_use(name, _input), do: "Using #{name}"
+  defp summarize_tool_use("Read", %{"file_path" => path}), do: {"tool_use", "Reading #{path}"}
+  defp summarize_tool_use("Edit", %{"file_path" => path}), do: {"tool_use", "Editing #{path}"}
+  defp summarize_tool_use("Write", %{"file_path" => path}), do: {"tool_use", "Writing #{path}"}
+  defp summarize_tool_use("Glob", %{"pattern" => pat}), do: {"tool_use", "Searching files: #{pat}"}
+  defp summarize_tool_use("Grep", %{"pattern" => pat}), do: {"tool_use", "Searching content: #{pat}"}
+
+  defp summarize_tool_use("TodoWrite", %{"todos" => todos}) when is_list(todos) do
+    content =
+      todos
+      |> Enum.map(fn todo ->
+        icon =
+          case todo["status"] do
+            "completed" -> "✓"
+            "in_progress" -> "→"
+            _ -> "○"
+          end
+
+        "#{icon} #{todo["content"]}"
+      end)
+      |> Enum.join("\n")
+
+    {"todo", content}
+  end
+
+  defp summarize_tool_use(name, _input), do: {"tool_use", "Using #{name}"}
 
   defp save_result_metadata(task_id, result) do
     usage = result["usage"] || %{}
