@@ -180,9 +180,10 @@ defmodule ForemanWeb.ProjectLive.Show do
         <div class="flex items-center gap-4">
           <.link
             navigate={~p"/projects/#{@project.id}/stats"}
-            class="text-base-content/60 hover:text-base-content text-sm"
+            class="text-base-content/60 hover:text-base-content"
+            title="Stats"
           >
-            Stats
+            <.icon name="hero-chart-bar-square" class="size-5" />
           </.link>
           <button
             phx-click="new_task"
