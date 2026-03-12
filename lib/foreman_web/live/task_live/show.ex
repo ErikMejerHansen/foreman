@@ -247,6 +247,13 @@ defmodule ForemanWeb.TaskLive.Show do
             <div class="p-4 rounded-lg border border-base-300 bg-base-200 mb-2">
               <h2 class="text-sm font-semibold text-base-content/70 mb-2">Instructions</h2>
               <p class="text-sm whitespace-pre-wrap">{@task.instructions}</p>
+              <%= if @task.images != [] do %>
+                <div class="flex flex-wrap gap-2 mt-2">
+                  <%= for image <- @task.images do %>
+                    <img src={"data:#{image["media_type"]};base64,#{image["data"]}"} class="max-h-48 rounded border border-base-300" />
+                  <% end %>
+                </div>
+              <% end %>
               <%= if @task.status == "todo" do %>
                 <button
                   phx-click="start_task"
