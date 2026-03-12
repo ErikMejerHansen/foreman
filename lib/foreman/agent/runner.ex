@@ -18,6 +18,8 @@ defmodule Foreman.Agent.Runner do
 
   @impl true
   def init(%{task_id: task_id, worktree_path: worktree_path, prompt: prompt} = args) do
+    images = Map.get(args, :images, [])
+
     state = %__MODULE__{
       task_id: task_id,
       worktree_path: worktree_path,
@@ -39,7 +41,7 @@ defmodule Foreman.Agent.Runner do
     # Start the claude process
     case find_claude() do
       {:ok, claude_path} ->
-        state = spawn_claude(state, prompt, claude_path)
+        state = spawn_claude(state, prompt, claude_path, images)
         {:ok, state}
 
       {:error, reason} ->
@@ -79,7 +81,7 @@ defmodule Foreman.Agent.Runner do
 
       case find_claude() do
         {:ok, claude_path} ->
-          state = spawn_claude(state, message, claude_path)
+          state = spawn_claude(state, message, claude_path, [])
           {:noreply, state}
 
         {:error, reason} ->
@@ -184,7 +186,7 @@ defmodule Foreman.Agent.Runner do
     end
   end
 
-  defp spawn_claude(state, prompt, claude_path) do
+  defp spawn_claude(state, prompt, claude_path, images) do
     args =
       [
         "--output-format",
@@ -223,12 +225,31 @@ defmodule Foreman.Agent.Runner do
       ])
 
     # Send the initial prompt via stdin as stream-json (required when --input-format stream-json is used)
+    content =
+      if images == [] do
+        prompt
+      else
+        image_parts =
+          Enum.map(images, fn img ->
+            %{
+              "type" => "image",
+              "source" => %{
+                "type" => "base64",
+                "media_type" => img["media_type"],
+                "data" => img["data"]
+              }
+            }
+          end)
+
+        [%{"type" => "text", "text" => prompt} | image_parts]
+      end
+
     json_line =
       Jason.encode!(%{
         "type" => "user",
         "message" => %{
           "role" => "user",
-          "content" => prompt
+          "content" => content
         }
       })
 
