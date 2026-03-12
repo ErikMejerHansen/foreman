@@ -151,6 +151,11 @@ defmodule ForemanWeb.TaskLive.Show do
   end
 
   @impl true
+  def handle_info({:status_changed, "done"}, socket) do
+    {:noreply, push_navigate(socket, to: ~p"/projects/#{socket.assigns.project.id}")}
+  end
+
+  @impl true
   def handle_info({:status_changed, _new_status}, socket) do
     task = Tasks.get_task!(socket.assigns.task.id)
     diff = load_diff(socket.assigns.project, task)
