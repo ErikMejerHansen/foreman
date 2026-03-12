@@ -271,6 +271,15 @@ defmodule ForemanWeb.TaskLive.Show do
               </p>
             <% end %>
             <%= for message <- @messages do %>
+              <%= if message.role == "todo" do %>
+                <div class="rounded-lg p-3 text-sm bg-amber-500/10 border border-amber-500/30">
+                  <div class="font-semibold text-xs mb-2 uppercase tracking-wide opacity-60 flex justify-between items-baseline">
+                    <span>📋 Todo list</span>
+                    <time class="font-normal normal-case tracking-normal" phx-hook="LocalTime" id={"time-#{message.id}"} datetime={format_time(message.inserted_at)}>{format_time(message.inserted_at)}</time>
+                  </div>
+                  <div class="font-mono whitespace-pre-wrap text-xs">{message.content}</div>
+                </div>
+              <% else %>
               <%= if message.role == "tool_use" do %>
                 <div class="text-xs text-base-content/40 font-mono py-0.5 flex items-baseline gap-2">
                   <span>🛠️ {message.content}</span>
@@ -293,6 +302,7 @@ defmodule ForemanWeb.TaskLive.Show do
                   </div>
                   <div class="whitespace-pre-wrap break-words">{message.content}</div>
                 </div>
+              <% end %>
               <% end %>
               <% end %>
             <% end %>
