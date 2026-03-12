@@ -271,15 +271,135 @@ defmodule ForemanWeb.ProjectLive.Stats do
     }
   end
 
+  defp line_options(title) do
+    %{
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: %{
+        legend: %{display: false},
+        title: %{display: true, text: title, font: %{size: 13}, padding: %{bottom: 12}}
+      },
+      scales: %{
+        x: %{ticks: %{maxRotation: 45, font: %{size: 10}}},
+        y: %{beginAtZero: true}
+      }
+    }
+  end
+
+  defp cost_line_chart(labels, tasks) do
+    c = chart_colors()
+    %{
+      type: "line",
+      data: %{
+        labels: labels,
+        datasets: [%{
+          label: "Cost (USD)",
+          data: Enum.map(tasks, &Float.round(&1.total_cost_usd || 0.0, 6)),
+          borderColor: c.blue_border,
+          backgroundColor: c.blue,
+          borderWidth: 2,
+          tension: 0.3,
+          fill: false,
+          pointRadius: 4
+        }]
+      },
+      options: line_options("Cost over Time (USD)")
+    }
+  end
+
+  defp tokens_line_chart(labels, tasks) do
+    c = chart_colors()
+    %{
+      type: "line",
+      data: %{
+        labels: labels,
+        datasets: [
+          %{
+            label: "Input Tokens",
+            data: Enum.map(tasks, &(&1.total_input_tokens || 0)),
+            borderColor: c.blue_border,
+            backgroundColor: c.blue,
+            borderWidth: 2,
+            tension: 0.3,
+            fill: false,
+            pointRadius: 4
+          },
+          %{
+            label: "Output Tokens",
+            data: Enum.map(tasks, &(&1.total_output_tokens || 0)),
+            borderColor: c.emerald_border,
+            backgroundColor: c.emerald,
+            borderWidth: 2,
+            tension: 0.3,
+            fill: false,
+            pointRadius: 4
+          }
+        ]
+      },
+      options: Map.merge(line_options("Token Usage over Time"), %{
+        plugins: %{
+          legend: %{display: true, position: "top", labels: %{font: %{size: 11}, boxWidth: 12}},
+          title: %{display: true, text: "Token Usage over Time", font: %{size: 13}, padding: %{bottom: 12}}
+        }
+      })
+    }
+  end
+
+  defp turns_line_chart(labels, tasks) do
+    c = chart_colors()
+    %{
+      type: "line",
+      data: %{
+        labels: labels,
+        datasets: [%{
+          label: "Turns",
+          data: Enum.map(tasks, &(&1.num_turns || 0)),
+          borderColor: c.amber_border,
+          backgroundColor: c.amber,
+          borderWidth: 2,
+          tension: 0.3,
+          fill: false,
+          pointRadius: 4
+        }]
+      },
+      options: line_options("Turns over Time")
+    }
+  end
+
+  defp duration_line_chart(labels, tasks) do
+    c = chart_colors()
+    %{
+      type: "line",
+      data: %{
+        labels: labels,
+        datasets: [%{
+          label: "Duration (min)",
+          data: Enum.map(tasks, fn t -> Float.round((t.duration_ms || 0) / 60_000, 1) end),
+          borderColor: c.violet_border,
+          backgroundColor: c.violet,
+          borderWidth: 2,
+          tension: 0.3,
+          fill: false,
+          pointRadius: 4
+        }]
+      },
+      options: line_options("Duration over Time (minutes)")
+    }
+  end
+
   defp build_chart_configs(tasks_with_data, all_tasks) do
     labels = Enum.map(tasks_with_data, fn t -> truncate(t.title || "Untitled", 20) end)
 
     [
       cost_chart(labels, tasks_with_data),
+      cost_line_chart(labels, tasks_with_data),
       tokens_chart(labels, tasks_with_data),
+      tokens_line_chart(labels, tasks_with_data),
       turns_chart(labels, tasks_with_data),
+      turns_line_chart(labels, tasks_with_data),
       status_chart(all_tasks),
-      duration_chart(labels, tasks_with_data)
+      duration_chart(labels, tasks_with_data),
+      duration_line_chart(labels, tasks_with_data)
     ]
   end
 
