@@ -20,6 +20,7 @@ defmodule Foreman.Tasks.Task do
     field :total_output_tokens, :integer
     field :num_turns, :integer
     field :duration_ms, :integer
+    field :images, {:array, :map}, default: []
 
     belongs_to :project, Foreman.Projects.Project
     has_many :messages, Foreman.Chat.Message
@@ -32,6 +33,7 @@ defmodule Foreman.Tasks.Task do
     |> cast(attrs, [
       :title,
       :instructions,
+      :images,
       :status,
       :position,
       :branch_name,

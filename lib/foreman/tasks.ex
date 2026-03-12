@@ -83,11 +83,13 @@ defmodule Foreman.Tasks do
     default_prompt = "# #{task.title}\n\n#{task.instructions}"
     prompt = Keyword.get(opts, :prompt, default_prompt)
     skip_chat_message = Keyword.get(opts, :skip_chat_message, false)
+    images = task.images || []
 
     case Agent.Supervisor.start_runner(%{
            task_id: task.id,
            worktree_path: worktree_path,
            prompt: prompt,
+           images: images,
            session_id: task.session_id,
            skip_chat_message: skip_chat_message
          }) do

@@ -20,6 +20,7 @@ defmodule ForemanWeb.ProjectLive.Show do
      |> assign(:tasks, tasks)
      |> assign(:page_title, project.name)
      |> assign(:task_changeset, nil)
+     |> assign(:task_images, [])
      |> assign(:show_all_done, false)}
   end
 
@@ -33,7 +34,9 @@ defmodule ForemanWeb.ProjectLive.Show do
   end
 
   defp apply_action(socket, :show, _params) do
-    assign(socket, :task_changeset, nil)
+    socket
+    |> assign(:task_changeset, nil)
+    |> assign(:task_images, [])
   end
 
   @impl true
@@ -48,11 +51,24 @@ defmodule ForemanWeb.ProjectLive.Show do
   end
 
   @impl true
+  def handle_event("paste_image", %{"data" => data, "media_type" => media_type}, socket) do
+    image = %{"data" => data, "media_type" => media_type}
+    {:noreply, update(socket, :task_images, &(&1 ++ [image]))}
+  end
+
+  @impl true
+  def handle_event("remove_image", %{"index" => index}, socket) do
+    images = List.delete_at(socket.assigns.task_images, index)
+    {:noreply, assign(socket, :task_images, images)}
+  end
+
+  @impl true
   def handle_event("save_task", params, socket) do
     task_params =
       params
       |> Map.get("task", %{})
       |> Map.put("project_id", socket.assigns.project.id)
+      |> Map.put("images", socket.assigns.task_images)
 
     auto_start = Map.get(params, "auto_start") == "on"
 
@@ -65,6 +81,8 @@ defmodule ForemanWeb.ProjectLive.Show do
          socket
          |> assign(:tasks, tasks)
          |> assign(:task_changeset, nil)
+         |> assign(:task_images, [])
+         |> push_event("clear_images", %{})
          |> push_patch(to: ~p"/projects/#{socket.assigns.project.id}")}
 
       {:error, %Ecto.Changeset{} = changeset} ->
@@ -223,10 +241,30 @@ defmodule ForemanWeb.ProjectLive.Show do
                 <textarea
                   name="task[instructions]"
                   rows="6"
+                  id="task-instructions"
+                  phx-hook="ImagePaste"
                   class="mt-1 block w-full rounded border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary px-3 py-2"
-                  placeholder="Describe what the agent should do..."
+                  placeholder="Describe what the agent should do... (paste images with ⌘V)"
                   required
                 >{Ecto.Changeset.get_field(@task_changeset, :instructions) || ""}</textarea>
+                <%= if @task_images != [] do %>
+                  <div class="mt-2 flex flex-wrap gap-2">
+                    <%= for {image, index} <- Enum.with_index(@task_images) do %>
+                      <div class="relative group">
+                        <img
+                          src={"data:#{image["media_type"]};base64,#{image["data"]}"}
+                          class="h-20 w-20 object-cover rounded border border-base-300"
+                        />
+                        <button
+                          type="button"
+                          phx-click="remove_image"
+                          phx-value-index={index}
+                          class="absolute -top-1 -right-1 bg-error text-error-content rounded-full w-5 h-5 text-xs hidden group-hover:flex items-center justify-center leading-none"
+                        >×</button>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
               </div>
               <div class="flex items-center justify-between">
                 <label class="flex items-center gap-2 cursor-pointer text-sm">
