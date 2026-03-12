@@ -301,11 +301,13 @@ defmodule Foreman.Tasks do
   end
 
   defp slugify(title) do
+    suffix = :crypto.strong_rand_bytes(4) |> Base.encode16(case: :lower)
+
     title
     |> String.downcase()
     |> String.replace(~r/[^a-z0-9\s-]/, "")
     |> String.replace(~r/[\s-]+/, "-")
     |> String.trim("-")
-    |> then(&"foreman/#{&1}")
+    |> then(&"foreman/#{&1}-#{suffix}")
   end
 end
