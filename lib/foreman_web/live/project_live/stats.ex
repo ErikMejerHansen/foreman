@@ -15,7 +15,8 @@ defmodule ForemanWeb.ProjectLive.Stats do
      |> assign(:tasks, tasks)
      |> assign(:page_title, "#{project.name} — Stats")
      |> assign(:sort_by, :cost)
-     |> assign(:sort_dir, :desc)}
+     |> assign(:sort_dir, :desc)
+     |> assign(:view, :table)}
   end
 
   @impl true
@@ -29,6 +30,11 @@ defmodule ForemanWeb.ProjectLive.Stats do
       end
 
     {:noreply, socket |> assign(:sort_by, sort_by) |> assign(:sort_dir, sort_dir)}
+  end
+
+  @impl true
+  def handle_event("set_view", %{"view" => view}, socket) do
+    {:noreply, assign(socket, :view, String.to_existing_atom(view))}
   end
 
   defp toggle_dir(:asc), do: :desc
@@ -97,12 +103,211 @@ defmodule ForemanWeb.ProjectLive.Stats do
   defp sort_indicator(col, col, :desc), do: " ↓"
   defp sort_indicator(_, _, _), do: ""
 
+  # --- Chart config builders ---
+
+  defp truncate(str, max) do
+    if String.length(str) > max, do: String.slice(str, 0, max - 1) <> "…", else: str
+  end
+
+  defp chart_colors do
+    %{
+      blue: "rgba(96, 165, 250, 0.8)",
+      blue_border: "rgba(96, 165, 250, 1)",
+      emerald: "rgba(52, 211, 153, 0.8)",
+      emerald_border: "rgba(52, 211, 153, 1)",
+      amber: "rgba(251, 191, 36, 0.8)",
+      amber_border: "rgba(251, 191, 36, 1)",
+      red: "rgba(248, 113, 113, 0.8)",
+      red_border: "rgba(248, 113, 113, 1)",
+      violet: "rgba(167, 139, 250, 0.8)",
+      violet_border: "rgba(167, 139, 250, 1)",
+      gray: "rgba(156, 163, 175, 0.8)",
+      gray_border: "rgba(156, 163, 175, 1)"
+    }
+  end
+
+  defp base_options(title) do
+    %{
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: %{
+        legend: %{display: false},
+        title: %{display: true, text: title, font: %{size: 13}, padding: %{bottom: 12}}
+      },
+      scales: %{
+        x: %{ticks: %{maxRotation: 45, font: %{size: 10}}},
+        y: %{beginAtZero: true}
+      }
+    }
+  end
+
+  defp cost_chart(labels, tasks) do
+    c = chart_colors()
+    %{
+      type: "bar",
+      data: %{
+        labels: labels,
+        datasets: [%{
+          label: "Cost (USD)",
+          data: Enum.map(tasks, &Float.round(&1.total_cost_usd || 0.0, 6)),
+          backgroundColor: c.blue,
+          borderColor: c.blue_border,
+          borderWidth: 1,
+          borderRadius: 3
+        }]
+      },
+      options: base_options("Cost per Task (USD)")
+    }
+  end
+
+  defp tokens_chart(labels, tasks) do
+    c = chart_colors()
+    %{
+      type: "bar",
+      data: %{
+        labels: labels,
+        datasets: [
+          %{
+            label: "Input Tokens",
+            data: Enum.map(tasks, &(&1.total_input_tokens || 0)),
+            backgroundColor: c.blue,
+            borderColor: c.blue_border,
+            borderWidth: 1,
+            borderRadius: 3,
+            stack: "tokens"
+          },
+          %{
+            label: "Output Tokens",
+            data: Enum.map(tasks, &(&1.total_output_tokens || 0)),
+            backgroundColor: c.emerald,
+            borderColor: c.emerald_border,
+            borderWidth: 1,
+            borderRadius: 3,
+            stack: "tokens"
+          }
+        ]
+      },
+      options: Map.merge(base_options("Token Usage per Task"), %{
+        plugins: %{
+          legend: %{display: true, position: "top", labels: %{font: %{size: 11}, boxWidth: 12}},
+          title: %{display: true, text: "Token Usage per Task", font: %{size: 13}, padding: %{bottom: 12}}
+        }
+      })
+    }
+  end
+
+  defp turns_chart(labels, tasks) do
+    c = chart_colors()
+    %{
+      type: "bar",
+      data: %{
+        labels: labels,
+        datasets: [%{
+          label: "Turns",
+          data: Enum.map(tasks, &(&1.num_turns || 0)),
+          backgroundColor: c.amber,
+          borderColor: c.amber_border,
+          borderWidth: 1,
+          borderRadius: 3
+        }]
+      },
+      options: base_options("Turns per Task")
+    }
+  end
+
+  defp status_chart(tasks) do
+    c = chart_colors()
+    counts = Enum.frequencies_by(tasks, & &1.status)
+    statuses = ["done", "in_progress", "review", "todo", "failed"]
+    labels = ["Done", "In Progress", "Review", "To Do", "Failed"]
+    colors = [c.emerald, c.blue, c.amber, c.gray, c.red]
+    border_colors = [c.emerald_border, c.blue_border, c.amber_border, c.gray_border, c.red_border]
+    data = Enum.map(statuses, &Map.get(counts, &1, 0))
+
+    # Filter out zero-count statuses
+    {labels, colors, border_colors, data} =
+      Enum.zip([labels, colors, border_colors, data])
+      |> Enum.filter(fn {_, _, _, d} -> d > 0 end)
+      |> unzip4()
+
+    %{
+      type: "doughnut",
+      data: %{
+        labels: labels,
+        datasets: [%{
+          data: data,
+          backgroundColor: colors,
+          borderColor: border_colors,
+          borderWidth: 2
+        }]
+      },
+      options: %{
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: %{
+          legend: %{display: true, position: "bottom", labels: %{font: %{size: 11}, boxWidth: 12, padding: 8}},
+          title: %{display: true, text: "Task Status Breakdown", font: %{size: 13}, padding: %{bottom: 8}}
+        }
+      }
+    }
+  end
+
+  defp duration_chart(labels, tasks) do
+    c = chart_colors()
+    %{
+      type: "bar",
+      data: %{
+        labels: labels,
+        datasets: [%{
+          label: "Duration (min)",
+          data: Enum.map(tasks, fn t -> Float.round((t.duration_ms || 0) / 60_000, 1) end),
+          backgroundColor: c.violet,
+          borderColor: c.violet_border,
+          borderWidth: 1,
+          borderRadius: 3
+        }]
+      },
+      options: base_options("Duration per Task (minutes)")
+    }
+  end
+
+  defp build_chart_configs(tasks_with_data, all_tasks) do
+    labels = Enum.map(tasks_with_data, fn t -> truncate(t.title || "Untitled", 20) end)
+
+    [
+      cost_chart(labels, tasks_with_data),
+      tokens_chart(labels, tasks_with_data),
+      turns_chart(labels, tasks_with_data),
+      status_chart(all_tasks),
+      duration_chart(labels, tasks_with_data)
+    ]
+  end
+
+  defp unzip4(list) do
+    {as, bs, cs, ds} =
+      Enum.reduce(list, {[], [], [], []}, fn {a, b, c, d}, {as, bs, cs, ds} ->
+        {[a | as], [b | bs], [c | cs], [d | ds]}
+      end)
+    {Enum.reverse(as), Enum.reverse(bs), Enum.reverse(cs), Enum.reverse(ds)}
+  end
+
   @impl true
   def render(assigns) do
-    tasks_with_data = Enum.filter(assigns.tasks, &(&1.total_cost_usd || &1.total_input_tokens || &1.num_turns))
+    tasks_with_data =
+      assigns.tasks
+      |> Enum.filter(&(&1.total_cost_usd || &1.total_input_tokens || &1.num_turns))
+      |> Enum.sort_by(& &1.inserted_at)
+
     totals = totals(tasks_with_data)
     sorted = sort_tasks(assigns.tasks, assigns.sort_by, assigns.sort_dir)
-    assigns = assign(assigns, totals: totals, sorted_tasks: sorted)
+    chart_configs = build_chart_configs(tasks_with_data, assigns.tasks)
+
+    assigns =
+      assign(assigns,
+        totals: totals,
+        sorted_tasks: sorted,
+        chart_configs_json: Jason.encode!(chart_configs)
+      )
 
     ~H"""
     <div class="min-h-screen flex flex-col">
@@ -113,6 +318,22 @@ defmodule ForemanWeb.ProjectLive.Stats do
             &larr; {@project.name}
           </.link>
           <h1 class="text-xl font-bold">Statistics</h1>
+        </div>
+        <div class="flex items-center gap-1 bg-base-200 rounded-lg p-1">
+          <button
+            phx-click="set_view"
+            phx-value-view="table"
+            class={"px-3 py-1.5 rounded-md text-sm transition-colors #{if @view == :table, do: "bg-base-100 shadow-sm font-medium", else: "text-base-content/60 hover:text-base-content"}"}
+          >
+            Table
+          </button>
+          <button
+            phx-click="set_view"
+            phx-value-view="charts"
+            class={"px-3 py-1.5 rounded-md text-sm transition-colors #{if @view == :charts, do: "bg-base-100 shadow-sm font-medium", else: "text-base-content/60 hover:text-base-content"}"}
+          >
+            Charts
+          </button>
         </div>
       </div>
 
@@ -141,100 +362,118 @@ defmodule ForemanWeb.ProjectLive.Stats do
           </div>
         </div>
 
-        <%!-- Per-task Table --%>
-        <div class="bg-base-100 border border-base-300 rounded-lg overflow-hidden">
-          <table class="w-full text-sm">
-            <thead class="bg-base-200/50 border-b border-base-300">
-              <tr>
-                <th class="text-left px-4 py-3 font-medium">
-                  <button phx-click="sort" phx-value-col="title" class="hover:text-base-content">
-                    Task{sort_indicator(:title, @sort_by, @sort_dir)}
-                  </button>
-                </th>
-                <th class="text-left px-4 py-3 font-medium">
-                  <button phx-click="sort" phx-value-col="status" class="hover:text-base-content">
-                    Status{sort_indicator(:status, @sort_by, @sort_dir)}
-                  </button>
-                </th>
-                <th class="text-right px-4 py-3 font-medium">
-                  <button phx-click="sort" phx-value-col="cost" class="hover:text-base-content">
-                    Cost{sort_indicator(:cost, @sort_by, @sort_dir)}
-                  </button>
-                </th>
-                <th class="text-right px-4 py-3 font-medium">
-                  <button phx-click="sort" phx-value-col="input_tokens" class="hover:text-base-content">
-                    Input Tokens{sort_indicator(:input_tokens, @sort_by, @sort_dir)}
-                  </button>
-                </th>
-                <th class="text-right px-4 py-3 font-medium">
-                  <button phx-click="sort" phx-value-col="output_tokens" class="hover:text-base-content">
-                    Output Tokens{sort_indicator(:output_tokens, @sort_by, @sort_dir)}
-                  </button>
-                </th>
-                <th class="text-right px-4 py-3 font-medium">
-                  <button phx-click="sort" phx-value-col="total_tokens" class="hover:text-base-content">
-                    Total Tokens{sort_indicator(:total_tokens, @sort_by, @sort_dir)}
-                  </button>
-                </th>
-                <th class="text-right px-4 py-3 font-medium">
-                  <button phx-click="sort" phx-value-col="turns" class="hover:text-base-content">
-                    Turns{sort_indicator(:turns, @sort_by, @sort_dir)}
-                  </button>
-                </th>
-                <th class="text-right px-4 py-3 font-medium">
-                  <button phx-click="sort" phx-value-col="duration" class="hover:text-base-content">
-                    Duration{sort_indicator(:duration, @sort_by, @sort_dir)}
-                  </button>
-                </th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-base-300">
-              <%= for task <- @sorted_tasks do %>
-                <% {badge_class, badge_label} = status_badge(task.status) %>
-                <tr class="hover:bg-base-200/30 transition-colors">
-                  <td class="px-4 py-3">
-                    <.link
-                      navigate={~p"/projects/#{@project.id}/tasks/#{task.id}"}
-                      class="font-medium hover:text-primary"
-                    >
-                      {task.title}
-                    </.link>
-                  </td>
-                  <td class="px-4 py-3">
-                    <span class={"text-xs px-2 py-0.5 rounded-full #{badge_class}"}>
-                      {badge_label}
-                    </span>
-                  </td>
-                  <td class="px-4 py-3 text-right font-mono text-xs">
-                    {format_cost(task.total_cost_usd)}
-                  </td>
-                  <td class="px-4 py-3 text-right font-mono text-xs">
-                    {format_tokens(task.total_input_tokens)}
-                  </td>
-                  <td class="px-4 py-3 text-right font-mono text-xs">
-                    {format_tokens(task.total_output_tokens)}
-                  </td>
-                  <td class="px-4 py-3 text-right font-mono text-xs">
-                    {format_tokens((task.total_input_tokens || 0) + (task.total_output_tokens || 0))}
-                  </td>
-                  <td class="px-4 py-3 text-right font-mono text-xs">
-                    {if task.num_turns && task.num_turns > 0, do: task.num_turns, else: "—"}
-                  </td>
-                  <td class="px-4 py-3 text-right font-mono text-xs">
-                    {format_duration(task.duration_ms)}
-                  </td>
-                </tr>
-              <% end %>
-              <%= if Enum.empty?(@tasks) do %>
+        <%= if @view == :table do %>
+          <%!-- Per-task Table --%>
+          <div class="bg-base-100 border border-base-300 rounded-lg overflow-hidden">
+            <table class="w-full text-sm">
+              <thead class="bg-base-200/50 border-b border-base-300">
                 <tr>
-                  <td colspan="8" class="px-4 py-8 text-center text-base-content/40">
-                    No tasks yet
-                  </td>
+                  <th class="text-left px-4 py-3 font-medium">
+                    <button phx-click="sort" phx-value-col="title" class="hover:text-base-content">
+                      Task{sort_indicator(:title, @sort_by, @sort_dir)}
+                    </button>
+                  </th>
+                  <th class="text-left px-4 py-3 font-medium">
+                    <button phx-click="sort" phx-value-col="status" class="hover:text-base-content">
+                      Status{sort_indicator(:status, @sort_by, @sort_dir)}
+                    </button>
+                  </th>
+                  <th class="text-right px-4 py-3 font-medium">
+                    <button phx-click="sort" phx-value-col="cost" class="hover:text-base-content">
+                      Cost{sort_indicator(:cost, @sort_by, @sort_dir)}
+                    </button>
+                  </th>
+                  <th class="text-right px-4 py-3 font-medium">
+                    <button phx-click="sort" phx-value-col="input_tokens" class="hover:text-base-content">
+                      Input Tokens{sort_indicator(:input_tokens, @sort_by, @sort_dir)}
+                    </button>
+                  </th>
+                  <th class="text-right px-4 py-3 font-medium">
+                    <button phx-click="sort" phx-value-col="output_tokens" class="hover:text-base-content">
+                      Output Tokens{sort_indicator(:output_tokens, @sort_by, @sort_dir)}
+                    </button>
+                  </th>
+                  <th class="text-right px-4 py-3 font-medium">
+                    <button phx-click="sort" phx-value-col="total_tokens" class="hover:text-base-content">
+                      Total Tokens{sort_indicator(:total_tokens, @sort_by, @sort_dir)}
+                    </button>
+                  </th>
+                  <th class="text-right px-4 py-3 font-medium">
+                    <button phx-click="sort" phx-value-col="turns" class="hover:text-base-content">
+                      Turns{sort_indicator(:turns, @sort_by, @sort_dir)}
+                    </button>
+                  </th>
+                  <th class="text-right px-4 py-3 font-medium">
+                    <button phx-click="sort" phx-value-col="duration" class="hover:text-base-content">
+                      Duration{sort_indicator(:duration, @sort_by, @sort_dir)}
+                    </button>
+                  </th>
                 </tr>
-              <% end %>
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody class="divide-y divide-base-300">
+                <%= for task <- @sorted_tasks do %>
+                  <% {badge_class, badge_label} = status_badge(task.status) %>
+                  <tr class="hover:bg-base-200/30 transition-colors">
+                    <td class="px-4 py-3">
+                      <.link
+                        navigate={~p"/projects/#{@project.id}/tasks/#{task.id}"}
+                        class="font-medium hover:text-primary"
+                      >
+                        {task.title}
+                      </.link>
+                    </td>
+                    <td class="px-4 py-3">
+                      <span class={"text-xs px-2 py-0.5 rounded-full #{badge_class}"}>
+                        {badge_label}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3 text-right font-mono text-xs">
+                      {format_cost(task.total_cost_usd)}
+                    </td>
+                    <td class="px-4 py-3 text-right font-mono text-xs">
+                      {format_tokens(task.total_input_tokens)}
+                    </td>
+                    <td class="px-4 py-3 text-right font-mono text-xs">
+                      {format_tokens(task.total_output_tokens)}
+                    </td>
+                    <td class="px-4 py-3 text-right font-mono text-xs">
+                      {format_tokens((task.total_input_tokens || 0) + (task.total_output_tokens || 0))}
+                    </td>
+                    <td class="px-4 py-3 text-right font-mono text-xs">
+                      {if task.num_turns && task.num_turns > 0, do: task.num_turns, else: "—"}
+                    </td>
+                    <td class="px-4 py-3 text-right font-mono text-xs">
+                      {format_duration(task.duration_ms)}
+                    </td>
+                  </tr>
+                <% end %>
+                <%= if Enum.empty?(@tasks) do %>
+                  <tr>
+                    <td colspan="8" class="px-4 py-8 text-center text-base-content/40">
+                      No tasks yet
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% end %>
+
+        <%= if @view == :charts do %>
+          <%= if Enum.empty?(@tasks) do %>
+            <div class="bg-base-100 border border-base-300 rounded-lg p-12 text-center text-base-content/40">
+              No task data to chart yet
+            </div>
+          <% else %>
+            <div
+              id="charts-container"
+              phx-hook="Charts"
+              data-charts={@chart_configs_json}
+              class="grid grid-cols-1 md:grid-cols-2 gap-4"
+            >
+            </div>
+          <% end %>
+        <% end %>
       </div>
     </div>
     """

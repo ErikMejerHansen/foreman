@@ -29,6 +29,7 @@ import ScrollBottomHook from "./hooks/scroll_bottom"
 import CmdEnterSubmitHook from "./hooks/cmd_enter_submit"
 import LocalTimeHook from "./hooks/local_time"
 import ImagePasteHook from "./hooks/image_paste"
+import ChartsHook from "./hooks/charts"
 
 const Hooks = {
   ...colocatedHooks,
@@ -37,6 +38,7 @@ const Hooks = {
   CmdEnterSubmit: CmdEnterSubmitHook,
   LocalTime: LocalTimeHook,
   ImagePaste: ImagePasteHook,
+  Charts: ChartsHook,
 }
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
