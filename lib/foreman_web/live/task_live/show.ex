@@ -78,12 +78,11 @@ defmodule ForemanWeb.TaskLive.Show do
     task = socket.assigns.task
 
     case Tasks.move_to_done(task) do
-      {:ok, task} ->
+      {:ok, _task} ->
         {:noreply,
          socket
-         |> assign(:task, task)
-         |> assign(:merge_error, nil)
-         |> put_flash(:info, "Changes merged to main!")}
+         |> put_flash(:info, "Changes merged to main!")
+         |> push_navigate(to: ~p"/projects/#{socket.assigns.project.id}")}
 
       {:error, reason} ->
         {:noreply, assign(socket, :merge_error, reason)}
