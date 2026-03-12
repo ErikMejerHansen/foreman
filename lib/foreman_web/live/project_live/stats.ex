@@ -403,6 +403,48 @@ defmodule ForemanWeb.ProjectLive.Stats do
     ]
   end
 
+  defp averages([]), do: %{cost: nil, input_tokens: nil, output_tokens: nil, turns: nil}
+
+  defp averages(tasks) do
+    count = length(tasks)
+
+    %{
+      cost: tasks |> Enum.map(&(&1.total_cost_usd || 0.0)) |> Enum.sum() |> Kernel./(count),
+      input_tokens:
+        tasks |> Enum.map(&(&1.total_input_tokens || 0)) |> Enum.sum() |> Kernel./(count) |> round(),
+      output_tokens:
+        tasks |> Enum.map(&(&1.total_output_tokens || 0)) |> Enum.sum() |> Kernel./(count) |> round(),
+      turns: tasks |> Enum.map(&(&1.num_turns || 0)) |> Enum.sum() |> Kernel./(count) |> round()
+    }
+  end
+
+  defp trends(tasks) when length(tasks) < 2,
+    do: %{cost: :neutral, input_tokens: :neutral, output_tokens: :neutral, turns: :neutral}
+
+  defp trends(tasks) do
+    mid = div(length(tasks), 2)
+    first_avgs = averages(Enum.take(tasks, mid))
+    second_avgs = averages(Enum.drop(tasks, mid))
+
+    compare = fn key ->
+      f = Map.get(first_avgs, key) || 0
+      s = Map.get(second_avgs, key) || 0
+
+      cond do
+        s > f -> :up
+        s < f -> :down
+        true -> :neutral
+      end
+    end
+
+    %{
+      cost: compare.(:cost),
+      input_tokens: compare.(:input_tokens),
+      output_tokens: compare.(:output_tokens),
+      turns: compare.(:turns)
+    }
+  end
+
   defp unzip4(list) do
     {as, bs, cs, ds} =
       Enum.reduce(list, {[], [], [], []}, fn {a, b, c, d}, {as, bs, cs, ds} ->
@@ -422,9 +464,14 @@ defmodule ForemanWeb.ProjectLive.Stats do
     sorted = sort_tasks(assigns.tasks, assigns.sort_by, assigns.sort_dir)
     chart_configs = build_chart_configs(tasks_with_data, assigns.tasks)
 
+    avgs = averages(tasks_with_data)
+    task_trends = trends(tasks_with_data)
+
     assigns =
       assign(assigns,
         totals: totals,
+        avgs: avgs,
+        task_trends: task_trends,
         sorted_tasks: sorted,
         chart_configs_json: Jason.encode!(chart_configs)
       )
@@ -479,6 +526,54 @@ defmodule ForemanWeb.ProjectLive.Stats do
           <div class="bg-base-100 border border-base-300 rounded-lg p-4">
             <div class="text-xs text-base-content/50 uppercase tracking-wide mb-1">Total Turns</div>
             <div class="text-2xl font-bold">{if @totals.turns > 0, do: @totals.turns, else: "—"}</div>
+          </div>
+        </div>
+
+        <%!-- Average Cards --%>
+        <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div class="bg-base-100 border border-base-300 rounded-lg p-4">
+            <div class="text-xs text-base-content/50 uppercase tracking-wide mb-1">Avg Cost</div>
+            <div class="flex items-baseline gap-1.5">
+              <div class="text-xl font-bold">{format_cost(@avgs.cost)}</div>
+              <%= if @task_trends.cost != :neutral do %>
+                <span class={if @task_trends.cost == :up, do: "text-error text-sm font-bold", else: "text-success text-sm font-bold"}>
+                  {if @task_trends.cost == :up, do: "↑", else: "↓"}
+                </span>
+              <% end %>
+            </div>
+          </div>
+          <div class="bg-base-100 border border-base-300 rounded-lg p-4">
+            <div class="text-xs text-base-content/50 uppercase tracking-wide mb-1">Avg Input Tokens</div>
+            <div class="flex items-baseline gap-1.5">
+              <div class="text-xl font-bold">{format_tokens(@avgs.input_tokens)}</div>
+              <%= if @task_trends.input_tokens != :neutral do %>
+                <span class={if @task_trends.input_tokens == :up, do: "text-error text-sm font-bold", else: "text-success text-sm font-bold"}>
+                  {if @task_trends.input_tokens == :up, do: "↑", else: "↓"}
+                </span>
+              <% end %>
+            </div>
+          </div>
+          <div class="bg-base-100 border border-base-300 rounded-lg p-4">
+            <div class="text-xs text-base-content/50 uppercase tracking-wide mb-1">Avg Output Tokens</div>
+            <div class="flex items-baseline gap-1.5">
+              <div class="text-xl font-bold">{format_tokens(@avgs.output_tokens)}</div>
+              <%= if @task_trends.output_tokens != :neutral do %>
+                <span class={if @task_trends.output_tokens == :up, do: "text-error text-sm font-bold", else: "text-success text-sm font-bold"}>
+                  {if @task_trends.output_tokens == :up, do: "↑", else: "↓"}
+                </span>
+              <% end %>
+            </div>
+          </div>
+          <div class="bg-base-100 border border-base-300 rounded-lg p-4">
+            <div class="text-xs text-base-content/50 uppercase tracking-wide mb-1">Avg Turns</div>
+            <div class="flex items-baseline gap-1.5">
+              <div class="text-xl font-bold">{if (@avgs.turns || 0) > 0, do: @avgs.turns, else: "—"}</div>
+              <%= if @task_trends.turns != :neutral do %>
+                <span class={if @task_trends.turns == :up, do: "text-error text-sm font-bold", else: "text-success text-sm font-bold"}>
+                  {if @task_trends.turns == :up, do: "↑", else: "↓"}
+                </span>
+              <% end %>
+            </div>
           </div>
         </div>
 
