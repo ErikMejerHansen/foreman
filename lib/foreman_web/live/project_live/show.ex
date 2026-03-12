@@ -247,24 +247,7 @@ defmodule ForemanWeb.ProjectLive.Show do
                   placeholder="Describe what the agent should do... (paste images with ⌘V)"
                   required
                 >{Ecto.Changeset.get_field(@task_changeset, :instructions) || ""}</textarea>
-                <%= if @task_images != [] do %>
-                  <div class="mt-2 flex flex-wrap gap-2">
-                    <%= for {image, index} <- Enum.with_index(@task_images) do %>
-                      <div class="relative group">
-                        <img
-                          src={"data:#{image["media_type"]};base64,#{image["data"]}"}
-                          class="h-20 w-20 object-cover rounded border border-base-300"
-                        />
-                        <button
-                          type="button"
-                          phx-click="remove_image"
-                          phx-value-index={index}
-                          class="absolute -top-1 -right-1 bg-error text-error-content rounded-full w-5 h-5 text-xs hidden group-hover:flex items-center justify-center leading-none"
-                        >×</button>
-                      </div>
-                    <% end %>
-                  </div>
-                <% end %>
+                <div id="task-images-container" class="mt-2 flex flex-wrap gap-2"></div>
               </div>
               <div class="flex items-center justify-between">
                 <label class="flex items-center gap-2 cursor-pointer text-sm">
