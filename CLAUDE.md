@@ -56,7 +56,7 @@ mix precommit          # Full pre-commit check (compile, format, test)
 |----------|-------|---------|
 | `ProjectLive.Index` | `/`, `/projects`, `/projects/new` | Project list + create form |
 | `ProjectLive.Show` | `/projects/:id`, `/projects/:id/tasks/new` | Kanban board with 4 columns |
-| `TaskLive.Show` | `/projects/:project_id/tasks/:id` | Task detail: chat + diff viewer |
+| `TaskLive.Show` | `/projects/:project_id/tasks/:id` | Task detail: chat + diff viewer + sticky todo panel |
 
 ### Task State Machine
 
