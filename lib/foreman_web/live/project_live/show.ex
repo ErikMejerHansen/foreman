@@ -37,20 +37,6 @@ defmodule ForemanWeb.ProjectLive.Show do
   end
 
   @impl true
-  def handle_event("toggle_knowledge_sharing", _params, socket) do
-    project = socket.assigns.project
-    new_value = !project.knowledge_sharing
-
-    case Projects.update_project(project, %{knowledge_sharing: new_value}) do
-      {:ok, project} ->
-        {:noreply, assign(socket, :project, project)}
-
-      {:error, _changeset} ->
-        {:noreply, put_flash(socket, :error, "Failed to update knowledge sharing setting")}
-    end
-  end
-
-  @impl true
   def handle_event("new_task", _params, socket) do
     {:noreply, push_patch(socket, to: ~p"/projects/#{socket.assigns.project.id}/tasks/new")}
   end
@@ -159,10 +145,6 @@ defmodule ForemanWeb.ProjectLive.Show do
     Enum.filter(tasks, &(&1.status == status))
   end
 
-  defp kanban_columns(%{knowledge_sharing: true}) do
-    ~w(todo in_progress review summarizing done)
-  end
-
   defp kanban_columns(_project) do
     ~w(todo in_progress review done)
   end
@@ -170,19 +152,16 @@ defmodule ForemanWeb.ProjectLive.Show do
   defp status_color("todo"), do: "bg-base-200 border-base-300"
   defp status_color("in_progress"), do: "bg-info/10 border-info/30"
   defp status_color("review"), do: "bg-warning/10 border-warning/30"
-  defp status_color("summarizing"), do: "bg-secondary/10 border-secondary/30"
   defp status_color("done"), do: "bg-success/10 border-success/30"
 
   defp status_label("todo"), do: "To Do"
   defp status_label("in_progress"), do: "In Progress"
   defp status_label("review"), do: "Review"
-  defp status_label("summarizing"), do: "Summarizing"
   defp status_label("done"), do: "Done"
 
   defp status_icon("todo"), do: "○"
   defp status_icon("in_progress"), do: "◉"
   defp status_icon("review"), do: "◎"
-  defp status_icon("summarizing"), do: "◇"
   defp status_icon("done"), do: "●"
 
   @impl true
@@ -199,15 +178,6 @@ defmodule ForemanWeb.ProjectLive.Show do
           <span class="text-sm text-base-content/60 font-mono">{@project.repo_path}</span>
         </div>
         <div class="flex items-center gap-4">
-          <label class="flex items-center gap-2 cursor-pointer text-sm">
-            <input
-              type="checkbox"
-              checked={@project.knowledge_sharing}
-              phx-click="toggle_knowledge_sharing"
-              class="toggle toggle-sm"
-            />
-            <span class="text-base-content/70">Knowledge sharing</span>
-          </label>
           <button
             phx-click="new_task"
             class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm"
@@ -329,7 +299,7 @@ defmodule ForemanWeb.ProjectLive.Show do
                     <.link navigate={~p"/projects/#{@project.id}/tasks/#{task.id}"} class="block">
                       <h3 class="font-medium text-sm">{task.title}</h3>
                       <p class="text-xs text-base-content/60 mt-1 line-clamp-2">
-                        {if task.summary, do: task.summary, else: task.instructions}
+                        {task.instructions}
                       </p>
                       <%= if task.branch_name do %>
                         <p class="text-xs text-info mt-2 font-mono">{task.branch_name}</p>

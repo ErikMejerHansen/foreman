@@ -80,10 +80,8 @@ defmodule Foreman.Tasks do
       })
       |> Repo.update()
 
-    project = Foreman.Projects.get_project!(task.project_id)
     default_prompt = "# #{task.title}\n\n#{task.instructions}"
-    raw_prompt = Keyword.get(opts, :prompt, default_prompt)
-    prompt = maybe_enrich_prompt(raw_prompt, task, project)
+    prompt = Keyword.get(opts, :prompt, default_prompt)
     skip_chat_message = Keyword.get(opts, :skip_chat_message, false)
 
     case Agent.Supervisor.start_runner(%{
@@ -122,74 +120,8 @@ defmodule Foreman.Tasks do
     System.cmd("osascript", ["-e", script], stderr_to_stdout: true)
   end
 
-  def move_to_done(%Task{status: status} = task) when status in ["review", "summarizing"] do
+  def move_to_done(%Task{status: "review"} = task) do
     require Logger
-    project = Foreman.Projects.get_project!(task.project_id)
-
-    # If knowledge sharing is on and we haven't summarized yet, go through summarizing first
-    if status == "review" and project.knowledge_sharing and is_nil(task.summary) do
-      start_summarizing(task)
-    else
-      # Use spawn to avoid deadlock when called from within the runner itself
-      # (e.g. summarizing runner calls finish_summarizing → move_to_done)
-      spawn(fn -> Agent.Supervisor.stop_runner(task.id) end)
-
-      with :ok <- Git.rebase_from_main(task.worktree_path),
-           :ok <- Git.merge_to_main(project.repo_path, task.branch_name),
-           :ok <- Git.remove_worktree(project.repo_path, task.worktree_path),
-           :ok <- Git.delete_branch(project.repo_path, task.branch_name) do
-        {:ok, task} =
-          task
-          |> Task.changeset(%{status: "done"})
-          |> Repo.update()
-
-        broadcast_project(task.project_id, {:task_updated, task})
-        broadcast_task(task.id, {:status_changed, "done"})
-        {:ok, task}
-      else
-        {:error, reason} ->
-          Logger.error("Failed to move task #{task.id} to done: #{inspect(reason)}")
-          {:error, reason}
-      end
-    end
-  end
-
-  def move_to_done(_task), do: {:error, "Can only move to done from review or summarizing"}
-
-  defp start_summarizing(%Task{} = task) do
-    # Stop the current runner if alive — we'll start a fresh one with --resume
-    Agent.Supervisor.stop_runner(task.id)
-
-    {:ok, task} =
-      task
-      |> Task.changeset(%{status: "summarizing"})
-      |> Repo.update()
-
-    broadcast_project(task.project_id, {:task_updated, task})
-    broadcast_task(task.id, {:status_changed, "summarizing"})
-
-    prompt = "Please summarize what you accomplished in this task in 2-3 sentences. Be concise."
-
-    case Agent.Supervisor.start_runner(%{
-           task_id: task.id,
-           worktree_path: task.worktree_path,
-           prompt: prompt,
-           session_id: task.session_id,
-           skip_chat_message: true,
-           mode: :summarizing
-         }) do
-      {:ok, _pid} -> :ok
-      {:error, reason} ->
-        require Logger
-        Logger.error("Failed to start summarizing agent for task #{task.id}: #{inspect(reason)}")
-    end
-
-    {:ok, task}
-  end
-
-  def finish_summarizing(task_id, summary_text) do
-    require Logger
-    task = get_task!(task_id)
     project = Foreman.Projects.get_project!(task.project_id)
 
     # Use spawn to avoid deadlock when called from within the runner itself
@@ -201,7 +133,7 @@ defmodule Foreman.Tasks do
          :ok <- Git.delete_branch(project.repo_path, task.branch_name) do
       {:ok, task} =
         task
-        |> Task.changeset(%{summary: summary_text, status: "done"})
+        |> Task.changeset(%{status: "done"})
         |> Repo.update()
 
       broadcast_project(task.project_id, {:task_updated, task})
@@ -209,10 +141,12 @@ defmodule Foreman.Tasks do
       {:ok, task}
     else
       {:error, reason} ->
-        Logger.error("Failed to complete task #{task_id} after summarizing: #{inspect(reason)}")
+        Logger.error("Failed to move task #{task.id} to done: #{inspect(reason)}")
         {:error, reason}
     end
   end
+
+  def move_to_done(_task), do: {:error, "Can only move to done from review"}
 
   def move_to_todo(%Task{status: "done"} = task) do
     {:ok, task} =
@@ -364,61 +298,6 @@ defmodule Foreman.Tasks do
 
   def broadcast_task(task_id, message) do
     Phoenix.PubSub.broadcast(Foreman.PubSub, "task:#{task_id}", message)
-  end
-
-  @max_context_tasks 10
-
-  defp maybe_enrich_prompt(prompt, task, %{knowledge_sharing: true} = _project) do
-    sibling_tasks =
-      Repo.all(
-        from t in Task,
-          where: t.project_id == ^task.project_id and t.id != ^task.id,
-          where: t.status in ["done", "in_progress"],
-          order_by: [desc: t.updated_at]
-      )
-
-    done_tasks =
-      sibling_tasks
-      |> Enum.filter(&(&1.status == "done"))
-      |> Enum.take(@max_context_tasks)
-
-    in_progress_tasks = Enum.filter(sibling_tasks, &(&1.status == "in_progress"))
-
-    if done_tasks == [] and in_progress_tasks == [] do
-      prompt
-    else
-      context = build_project_context(done_tasks, in_progress_tasks)
-      "#{context}\n## Your Task\n#{prompt}"
-    end
-  end
-
-  defp maybe_enrich_prompt(prompt, _task, _project), do: prompt
-
-  defp build_project_context(done_tasks, in_progress_tasks) do
-    sections = ["## Project Context"]
-
-    sections =
-      if done_tasks != [] do
-        lines =
-          Enum.map(done_tasks, fn t ->
-            summary = if t.summary, do: " — #{t.summary}", else: ""
-            "- \"#{t.title}\"#{summary}"
-          end)
-
-        sections ++ ["Recently completed tasks:" | lines]
-      else
-        sections
-      end
-
-    sections =
-      if in_progress_tasks != [] do
-        lines = Enum.map(in_progress_tasks, fn t -> "- \"#{t.title}\"" end)
-        sections ++ ["", "Currently in progress:" | lines]
-      else
-        sections
-      end
-
-    Enum.join(sections, "\n") <> "\n"
   end
 
   defp slugify(title) do
