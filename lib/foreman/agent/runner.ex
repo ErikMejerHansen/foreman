@@ -2,7 +2,8 @@ defmodule Foreman.Agent.Runner do
   use GenServer
   require Logger
 
-  defstruct [:task_id, :port, :session_id, :buffer, :worktree_path, seen_uuids: MapSet.new()]
+  defstruct [:task_id, :port, :session_id, :buffer, :worktree_path, :allowed_tools,
+             seen_uuids: MapSet.new()]
 
   def start_link(args) do
     GenServer.start_link(__MODULE__, args,
@@ -19,11 +20,13 @@ defmodule Foreman.Agent.Runner do
   @impl true
   def init(%{task_id: task_id, worktree_path: worktree_path, prompt: prompt} = args) do
     images = Map.get(args, :images, [])
+    allowed_tools = Map.get(args, :allowed_tools, Foreman.Projects.Project.all_tools())
 
     state = %__MODULE__{
       task_id: task_id,
       worktree_path: worktree_path,
       session_id: Map.get(args, :session_id),
+      allowed_tools: allowed_tools,
       buffer: ""
     }
 
@@ -41,7 +44,7 @@ defmodule Foreman.Agent.Runner do
     # Start the claude process
     case find_claude() do
       {:ok, claude_path} ->
-        state = spawn_claude(state, prompt, claude_path, images)
+        state = spawn_claude(state, prompt, claude_path, images, allowed_tools)
         {:ok, state}
 
       {:error, reason} ->
@@ -81,7 +84,7 @@ defmodule Foreman.Agent.Runner do
 
       case find_claude() do
         {:ok, claude_path} ->
-          state = spawn_claude(state, message, claude_path, [])
+          state = spawn_claude(state, message, claude_path, [], state.allowed_tools)
           {:noreply, state}
 
         {:error, reason} ->
@@ -186,7 +189,13 @@ defmodule Foreman.Agent.Runner do
     end
   end
 
-  defp spawn_claude(state, prompt, claude_path, images) do
+  defp spawn_claude(state, prompt, claude_path, images, allowed_tools) do
+    tools_str =
+      case allowed_tools do
+        [_ | _] -> Enum.join(allowed_tools, ",")
+        _ -> Enum.join(Foreman.Projects.Project.all_tools(), ",")
+      end
+
     args =
       [
         "--output-format",
@@ -195,7 +204,7 @@ defmodule Foreman.Agent.Runner do
         "stream-json",
         "--verbose",
         "--allowedTools",
-        "Bash,Read,Edit,MultiEdit,Write,Glob,Grep,TodoWrite,TodoRead,WebFetch,WebSearch"
+        tools_str
       ]
 
     # Add --resume if we have a session_id from a previous run
