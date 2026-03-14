@@ -107,6 +107,7 @@ defmodule Foreman.TasksTest do
   end
 
   describe "move_to_review/1" do
+    @tag :macos
     test "transitions task from in_progress to review" do
       project = create_project()
       task = create_task_with_status(project.id, "in_progress")
