@@ -12,7 +12,13 @@ defmodule ForemanWeb.ProjectLive.Show do
 
     if connected?(socket) do
       Tasks.subscribe_project(id)
+      Foreman.ReviewNotifications.subscribe()
+      Foreman.ReviewNotifications.clear(id)
     end
+
+    other_review_projects =
+      Foreman.ReviewNotifications.pending_project_ids()
+      |> Enum.reject(&(&1 == id))
 
     {:ok,
      socket
@@ -21,7 +27,8 @@ defmodule ForemanWeb.ProjectLive.Show do
      |> assign(:page_title, project.name)
      |> assign(:task_changeset, nil)
      |> assign(:task_images, [])
-     |> assign(:show_all_done, false)}
+     |> assign(:show_all_done, false)
+     |> assign(:other_review_projects, other_review_projects)}
   end
 
   @impl true
@@ -155,6 +162,21 @@ defmodule ForemanWeb.ProjectLive.Show do
     {:noreply, assign(socket, :tasks, tasks)}
   end
 
+  @impl true
+  def handle_info({:review_notification, project_id}, socket) do
+    if project_id != socket.assigns.project.id do
+      {:noreply,
+       update(socket, :other_review_projects, &[project_id | List.delete(&1, project_id)])}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_info({:review_notification_cleared, project_id}, socket) do
+    {:noreply, update(socket, :other_review_projects, &List.delete(&1, project_id))}
+  end
+
   defp tasks_by_status(tasks, "todo") do
     Enum.filter(tasks, &(&1.status in ["todo", "failed"]))
   end
@@ -189,8 +211,11 @@ defmodule ForemanWeb.ProjectLive.Show do
       <%!-- Header --%>
       <div class="bg-base-100 border-b border-base-300 px-6 py-4 flex justify-between items-center">
         <div class="flex items-center gap-4">
-          <.link navigate={~p"/projects"} class="text-base-content/60 hover:text-base-content">
+          <.link navigate={~p"/projects"} class="text-base-content/60 hover:text-base-content flex items-center gap-1.5">
             &larr; Projects
+            <%= if @other_review_projects != [] do %>
+              <span class="w-2 h-2 bg-red-500 rounded-full flex-shrink-0" title="Another project has a task ready for review"></span>
+            <% end %>
           </.link>
           <h1 class="text-xl font-bold">{@project.name}</h1>
           <span class="text-sm text-base-content/60 font-mono">{@project.repo_path}</span>

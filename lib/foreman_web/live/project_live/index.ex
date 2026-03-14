@@ -6,7 +6,13 @@ defmodule ForemanWeb.ProjectLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, projects: Projects.list_projects())}
+    if connected?(socket) do
+      Foreman.ReviewNotifications.subscribe()
+    end
+
+    review_project_ids = Foreman.ReviewNotifications.pending_project_ids()
+
+    {:ok, assign(socket, projects: Projects.list_projects(), review_project_ids: review_project_ids)}
   end
 
   @impl true
@@ -47,6 +53,16 @@ defmodule ForemanWeb.ProjectLive.Index do
     {:ok, _} = Projects.delete_project(project)
 
     {:noreply, assign(socket, projects: Projects.list_projects())}
+  end
+
+  @impl true
+  def handle_info({:review_notification, project_id}, socket) do
+    {:noreply, update(socket, :review_project_ids, &[project_id | List.delete(&1, project_id)])}
+  end
+
+  @impl true
+  def handle_info({:review_notification_cleared, project_id}, socket) do
+    {:noreply, update(socket, :review_project_ids, &List.delete(&1, project_id))}
   end
 
   @impl true
@@ -114,7 +130,12 @@ defmodule ForemanWeb.ProjectLive.Index do
           <div class="bg-base-100 rounded-lg shadow p-6 hover:shadow-md transition-shadow border border-base-content/15">
             <div class="flex justify-between items-center">
               <.link navigate={~p"/projects/#{project.id}"} class="flex-1">
-                <h2 class="text-lg font-semibold">{project.name}</h2>
+                <div class="flex items-center gap-2">
+                  <h2 class="text-lg font-semibold">{project.name}</h2>
+                  <%= if project.id in @review_project_ids do %>
+                    <span class="w-2 h-2 bg-red-500 rounded-full flex-shrink-0" title="Task ready for review"></span>
+                  <% end %>
+                </div>
                 <p class="text-sm text-base-content/60 mt-1 font-mono">{project.repo_path}</p>
               </.link>
               <div class="flex items-center gap-3 ml-4">

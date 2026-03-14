@@ -14,6 +14,7 @@ defmodule Foreman.Application do
       {Phoenix.PubSub, name: Foreman.PubSub},
       {Registry, keys: :unique, name: Foreman.Agent.Registry},
       Foreman.Agent.Supervisor,
+      Foreman.ReviewNotifications,
       # Start to serve requests, typically the last entry
       ForemanWeb.Endpoint
     ]
