@@ -117,6 +117,7 @@ defmodule Foreman.Tasks do
     broadcast_project(task.project_id, {:task_updated, task})
     broadcast_task(task.id, {:status_changed, "review"})
     notify_review(task)
+    Foreman.ReviewNotifications.notify(task.project_id)
     {:ok, task}
   end
 
