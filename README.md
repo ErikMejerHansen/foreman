@@ -28,7 +28,6 @@ Multiple tasks run in parallel — each agent works in its own isolated worktree
 - **Diff viewer** — see exactly what the agent changed before merging
 - **Feedback loop** — send follow-up instructions to an agent in Review; it resumes with full session context
 - **One-click merge** — rebases from main and merges the branch when you're satisfied
-- **Knowledge sharing** — opt-in per-project setting that lets agents learn from each other: completed tasks get auto-summarised, and new agents receive context about what sibling tasks have done and are working on
 - **Image attachments** — attach screenshots or diagrams to tasks for the agent to reference
 - **Stats view** — per-task cost, token usage, turn count, and duration charts
 - **macOS notifications** — get notified when a task moves to Review
