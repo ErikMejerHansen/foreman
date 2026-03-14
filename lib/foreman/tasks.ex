@@ -84,6 +84,8 @@ defmodule Foreman.Tasks do
     prompt = Keyword.get(opts, :prompt, default_prompt)
     skip_chat_message = Keyword.get(opts, :skip_chat_message, false)
     images = task.images || []
+    project = Foreman.Projects.get_project!(task.project_id)
+    allowed_tools = project.allowed_tools
 
     case Agent.Supervisor.start_runner(%{
            task_id: task.id,
@@ -91,7 +93,8 @@ defmodule Foreman.Tasks do
            prompt: prompt,
            images: images,
            session_id: task.session_id,
-           skip_chat_message: skip_chat_message
+           skip_chat_message: skip_chat_message,
+           allowed_tools: allowed_tools
          }) do
       {:ok, _pid} ->
         :ok
@@ -260,13 +263,15 @@ defmodule Foreman.Tasks do
         # Runner died — start a new one with --resume
         require Logger
         Logger.info("Runner not found for task #{task.id}, starting new session with --resume")
+        project = Foreman.Projects.get_project!(task.project_id)
 
         Agent.Supervisor.start_runner(%{
           task_id: task.id,
           worktree_path: task.worktree_path,
           prompt: message,
           session_id: task.session_id,
-          skip_chat_message: true
+          skip_chat_message: true,
+          allowed_tools: project.allowed_tools
         })
 
       pid ->
