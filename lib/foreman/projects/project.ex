@@ -13,6 +13,7 @@ defmodule Foreman.Projects.Project do
     field :name, :string
     field :repo_path, :string
     field :allowed_tools, {:array, :string}, default: @all_tools
+    field :run_commands, :string
 
     has_many :tasks, Foreman.Tasks.Task
 
@@ -21,7 +22,7 @@ defmodule Foreman.Projects.Project do
 
   def changeset(project, attrs) do
     project
-    |> cast(attrs, [:name, :repo_path, :allowed_tools])
+    |> cast(attrs, [:name, :repo_path, :allowed_tools, :run_commands])
     |> validate_required([:name, :repo_path])
   end
 end

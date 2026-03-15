@@ -138,6 +138,24 @@ defmodule ForemanWeb.TaskLive.Show do
     {:noreply, socket}
   end
 
+  def handle_event("run_project", _params, socket) do
+    worktree_path = socket.assigns.task.worktree_path
+    run_commands = socket.assigns.project.run_commands
+
+    if worktree_path && run_commands && run_commands != "" do
+      script = ~s(cd #{worktree_path} && #{run_commands})
+
+      System.cmd("osascript", [
+        "-e", ~s(tell application "Terminal"),
+        "-e", ~s(do script "#{script}"),
+        "-e", "activate",
+        "-e", "end tell"
+      ])
+    end
+
+    {:noreply, socket}
+  end
+
   @impl true
   def handle_info({:new_message, message}, socket) do
     messages = socket.assigns.messages ++ [message]
@@ -412,12 +430,23 @@ defmodule ForemanWeb.TaskLive.Show do
             <div class="p-4 border-b border-base-300 bg-base-200 flex justify-between items-center">
               <h2 class="text-sm font-semibold text-base-content/70">Changes</h2>
               <%= if @task.status == "review" do %>
-                <button
-                  phx-click="approve_and_merge"
-                  class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm"
-                >
-                  Approve & Merge
-                </button>
+                <div class="flex items-center gap-2">
+                  <%= if @project.run_commands && @project.run_commands != "" do %>
+                    <button
+                      phx-click="run_project"
+                      class="bg-base-300 text-base-content px-3 py-2 rounded hover:bg-base-400 text-sm flex items-center gap-1.5"
+                      title="Run project in new Terminal"
+                    >
+                      <.icon name="hero-play" class="w-4 h-4" /> Run
+                    </button>
+                  <% end %>
+                  <button
+                    phx-click="approve_and_merge"
+                    class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm"
+                  >
+                    Approve & Merge
+                  </button>
+                </div>
               <% end %>
             </div>
             <%= if @merge_error do %>
