@@ -18,6 +18,8 @@ defmodule Foreman.Tasks.Task do
     field :total_cost_usd, :float
     field :total_input_tokens, :integer
     field :total_output_tokens, :integer
+    field :cache_creation_input_tokens, :integer
+    field :cache_read_input_tokens, :integer
     field :num_turns, :integer
     field :duration_ms, :integer
     field :images, {:array, :map}, default: []

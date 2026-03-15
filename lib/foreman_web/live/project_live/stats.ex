@@ -51,7 +51,9 @@ defmodule ForemanWeb.ProjectLive.Stats do
   defp task_sort_value(task, :input_tokens), do: task.total_input_tokens || 0
   defp task_sort_value(task, :output_tokens), do: task.total_output_tokens || 0
   defp task_sort_value(task, :total_tokens),
-    do: (task.total_input_tokens || 0) + (task.total_output_tokens || 0)
+    do:
+      (task.total_input_tokens || 0) + (task.total_output_tokens || 0) +
+        (task.cache_creation_input_tokens || 0) + (task.cache_read_input_tokens || 0)
   defp task_sort_value(task, :turns), do: task.num_turns || 0
   defp task_sort_value(task, :duration), do: task.duration_ms || 0
 
@@ -87,6 +89,10 @@ defmodule ForemanWeb.ProjectLive.Stats do
       cost: tasks |> Enum.map(&(&1.total_cost_usd || 0.0)) |> Enum.sum(),
       input_tokens: tasks |> Enum.map(&(&1.total_input_tokens || 0)) |> Enum.sum(),
       output_tokens: tasks |> Enum.map(&(&1.total_output_tokens || 0)) |> Enum.sum(),
+      cache_creation_input_tokens:
+        tasks |> Enum.map(&(&1.cache_creation_input_tokens || 0)) |> Enum.sum(),
+      cache_read_input_tokens:
+        tasks |> Enum.map(&(&1.cache_read_input_tokens || 0)) |> Enum.sum(),
       turns: tasks |> Enum.map(&(&1.num_turns || 0)) |> Enum.sum(),
       duration_ms: tasks |> Enum.map(&(&1.duration_ms || 0)) |> Enum.sum()
     }
@@ -172,6 +178,24 @@ defmodule ForemanWeb.ProjectLive.Stats do
             data: Enum.map(tasks, &(&1.total_input_tokens || 0)),
             backgroundColor: c.blue,
             borderColor: c.blue_border,
+            borderWidth: 1,
+            borderRadius: 3,
+            stack: "tokens"
+          },
+          %{
+            label: "Cache Write",
+            data: Enum.map(tasks, &(&1.cache_creation_input_tokens || 0)),
+            backgroundColor: c.amber,
+            borderColor: c.amber_border,
+            borderWidth: 1,
+            borderRadius: 3,
+            stack: "tokens"
+          },
+          %{
+            label: "Cache Read",
+            data: Enum.map(tasks, &(&1.cache_read_input_tokens || 0)),
+            backgroundColor: c.violet,
+            borderColor: c.violet_border,
             borderWidth: 1,
             borderRadius: 3,
             stack: "tokens"
@@ -488,6 +512,12 @@ defmodule ForemanWeb.ProjectLive.Stats do
                       Output Tokens{sort_indicator(:output_tokens, @sort_by, @sort_dir)}
                     </button>
                   </th>
+                  <th class="text-right px-4 py-3 font-medium text-amber-600/80">
+                    Cache Write
+                  </th>
+                  <th class="text-right px-4 py-3 font-medium text-violet-600/80">
+                    Cache Read
+                  </th>
                   <th class="text-right px-4 py-3 font-medium">
                     <button phx-click="sort" phx-value-col="total_tokens" class="hover:text-base-content">
                       Total Tokens{sort_indicator(:total_tokens, @sort_by, @sort_dir)}
@@ -531,8 +561,18 @@ defmodule ForemanWeb.ProjectLive.Stats do
                     <td class="px-4 py-3 text-right font-mono text-xs">
                       {format_tokens(task.total_output_tokens)}
                     </td>
+                    <td class="px-4 py-3 text-right font-mono text-xs text-amber-600/80">
+                      {format_tokens(task.cache_creation_input_tokens)}
+                    </td>
+                    <td class="px-4 py-3 text-right font-mono text-xs text-violet-600/80">
+                      {format_tokens(task.cache_read_input_tokens)}
+                    </td>
                     <td class="px-4 py-3 text-right font-mono text-xs">
-                      {format_tokens((task.total_input_tokens || 0) + (task.total_output_tokens || 0))}
+                      {format_tokens(
+                        (task.total_input_tokens || 0) + (task.total_output_tokens || 0) +
+                          (task.cache_creation_input_tokens || 0) +
+                          (task.cache_read_input_tokens || 0)
+                      )}
                     </td>
                     <td class="px-4 py-3 text-right font-mono text-xs">
                       {if task.num_turns && task.num_turns > 0, do: task.num_turns, else: "—"}
@@ -544,7 +584,7 @@ defmodule ForemanWeb.ProjectLive.Stats do
                 <% end %>
                 <%= if Enum.empty?(@tasks) do %>
                   <tr>
-                    <td colspan="8" class="px-4 py-8 text-center text-base-content/40">
+                    <td colspan="10" class="px-4 py-8 text-center text-base-content/40">
                       No tasks yet
                     </td>
                   </tr>

@@ -577,6 +577,8 @@ defmodule Foreman.Agent.Runner do
       total_cost_usd: result["total_cost_usd"],
       total_input_tokens: usage["input_tokens"],
       total_output_tokens: usage["output_tokens"],
+      cache_creation_input_tokens: usage["cache_creation_input_tokens"],
+      cache_read_input_tokens: usage["cache_read_input_tokens"],
       num_turns: result["num_turns"],
       duration_ms: result["duration_ms"]
     )

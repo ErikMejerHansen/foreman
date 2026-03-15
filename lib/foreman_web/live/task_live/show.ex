@@ -231,7 +231,7 @@ defmodule ForemanWeb.TaskLive.Show do
             <span class="text-xs text-base-content/50 font-mono">
               {format_tokens(@task.total_input_tokens)} in / {format_tokens(
                 @task.total_output_tokens || 0
-              )} out
+              )} out<%= if (@task.cache_creation_input_tokens || 0) > 0 or (@task.cache_read_input_tokens || 0) > 0 do %> / <span class="text-amber-600/70">{format_tokens(@task.cache_creation_input_tokens || 0)} cache↑</span> <span class="text-violet-600/70">{format_tokens(@task.cache_read_input_tokens || 0)} cache↓</span><% end %>
             </span>
           <% end %>
           <%= if @task.num_turns do %>
