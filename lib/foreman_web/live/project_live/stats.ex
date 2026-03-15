@@ -54,6 +54,8 @@ defmodule ForemanWeb.ProjectLive.Stats do
     do:
       (task.total_input_tokens || 0) + (task.total_output_tokens || 0) +
         (task.cache_creation_input_tokens || 0) + (task.cache_read_input_tokens || 0)
+  defp task_sort_value(task, :cache_write), do: task.cache_creation_input_tokens || 0
+  defp task_sort_value(task, :cache_read), do: task.cache_read_input_tokens || 0
   defp task_sort_value(task, :turns), do: task.num_turns || 0
   defp task_sort_value(task, :duration), do: task.duration_ms || 0
 
@@ -513,10 +515,14 @@ defmodule ForemanWeb.ProjectLive.Stats do
                     </button>
                   </th>
                   <th class="text-right px-4 py-3 font-medium text-amber-600/80">
-                    Cache Write
+                    <button phx-click="sort" phx-value-col="cache_write" class="hover:text-base-content">
+                      Cache Write{sort_indicator(:cache_write, @sort_by, @sort_dir)}
+                    </button>
                   </th>
                   <th class="text-right px-4 py-3 font-medium text-violet-600/80">
-                    Cache Read
+                    <button phx-click="sort" phx-value-col="cache_read" class="hover:text-base-content">
+                      Cache Read{sort_indicator(:cache_read, @sort_by, @sort_dir)}
+                    </button>
                   </th>
                   <th class="text-right px-4 py-3 font-medium">
                     <button phx-click="sort" phx-value-col="total_tokens" class="hover:text-base-content">
