@@ -11,8 +11,8 @@ defmodule Foreman.Agent.Runner do
     )
   end
 
-  def send_message(pid, message) do
-    GenServer.cast(pid, {:send_message, message})
+  def send_message(pid, message, images \\ []) do
+    GenServer.cast(pid, {:send_message, message, images})
   end
 
   # Server callbacks
@@ -61,17 +61,36 @@ defmodule Foreman.Agent.Runner do
   end
 
   @impl true
-  def handle_cast({:send_message, message}, state) do
+  def handle_cast({:send_message, message, images}, state) do
     # Note: user message is already persisted by the LiveView before calling this
 
     if state.port && Port.info(state.port) do
       # Send message to the running claude process via stdin as NDJSON
+      content =
+        if images == [] do
+          message
+        else
+          image_parts =
+            Enum.map(images, fn img ->
+              %{
+                "type" => "image",
+                "source" => %{
+                  "type" => "base64",
+                  "media_type" => img["media_type"],
+                  "data" => img["data"]
+                }
+              }
+            end)
+
+          [%{"type" => "text", "text" => message} | image_parts]
+        end
+
       json_line =
         Jason.encode!(%{
           "type" => "user",
           "message" => %{
             "role" => "user",
-            "content" => message
+            "content" => content
           }
         })
 
@@ -84,7 +103,7 @@ defmodule Foreman.Agent.Runner do
 
       case find_claude() do
         {:ok, claude_path} ->
-          state = spawn_claude(state, message, claude_path, [], state.allowed_tools)
+          state = spawn_claude(state, message, claude_path, images, state.allowed_tools)
           {:noreply, state}
 
         {:error, reason} ->
