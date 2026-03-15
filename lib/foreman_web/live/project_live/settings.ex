@@ -3,6 +3,7 @@ defmodule ForemanWeb.ProjectLive.Settings do
 
   alias Foreman.Projects
   alias Foreman.Projects.Project
+  alias ForemanWeb.Layouts
 
   @tool_descriptions %{
     "Bash" => "Run shell commands in the worktree",
@@ -53,6 +54,7 @@ defmodule ForemanWeb.ProjectLive.Settings do
     assigns = assign(assigns, :tool_descriptions, @tool_descriptions)
 
     ~H"""
+    <Layouts.flash_group flash={@flash} />
     <div class="max-w-2xl mx-auto py-8 px-4">
       <div class="flex items-center gap-2 mb-8 text-sm">
         <.link navigate={~p"/projects"} class="text-base-content/50 hover:text-base-content transition-colors">
