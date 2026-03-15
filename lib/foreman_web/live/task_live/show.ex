@@ -303,6 +303,20 @@ defmodule ForemanWeb.TaskLive.Show do
                   <time class="opacity-50 shrink-0" phx-hook="LocalTime" id={"time-#{message.id}"} datetime={format_time(message.inserted_at)}>{format_time(message.inserted_at)}</time>
                 </div>
               <% else %>
+              <%= if message.role == "web_search" do %>
+                <div class="text-xs text-base-content/40 font-mono py-0.5 flex items-center gap-1.5">
+                  <.icon name="hero-magnifying-glass" class="size-3 shrink-0" />
+                  <span class="truncate">{message.content}</span>
+                  <time class="opacity-50 shrink-0 ml-0.5" phx-hook="LocalTime" id={"time-#{message.id}"} datetime={format_time(message.inserted_at)}>{format_time(message.inserted_at)}</time>
+                </div>
+              <% else %>
+              <%= if message.role == "web_fetch" do %>
+                <div class="text-xs text-base-content/40 font-mono py-0.5 flex items-center gap-1.5">
+                  <.icon name="hero-globe-alt" class="size-3 shrink-0" />
+                  <span class="truncate">{message.content}</span>
+                  <time class="opacity-50 shrink-0 ml-0.5" phx-hook="LocalTime" id={"time-#{message.id}"} datetime={format_time(message.inserted_at)}>{format_time(message.inserted_at)}</time>
+                </div>
+              <% else %>
               <%= if message.role == "system" && !usage_limit_message?(message.content) do %>
                 <div class="text-xs text-base-content/40 font-mono py-0.5 flex items-baseline gap-2">
                   <span>⚙️ {message.content}</span>
@@ -319,6 +333,8 @@ defmodule ForemanWeb.TaskLive.Show do
                   </div>
                   <div class="whitespace-pre-wrap break-words">{message.content}</div>
                 </div>
+              <% end %>
+              <% end %>
               <% end %>
               <% end %>
               <% end %>

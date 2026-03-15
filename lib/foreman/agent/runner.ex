@@ -547,6 +547,8 @@ defmodule Foreman.Agent.Runner do
   defp summarize_tool_use("Write", %{"file_path" => path}), do: {"tool_use", "Writing #{path}"}
   defp summarize_tool_use("Glob", %{"pattern" => pat}), do: {"tool_use", "Searching files: #{pat}"}
   defp summarize_tool_use("Grep", %{"pattern" => pat}), do: {"tool_use", "Searching content: #{pat}"}
+  defp summarize_tool_use("WebFetch", %{"url" => url}), do: {"web_fetch", url}
+  defp summarize_tool_use("WebSearch", %{"query" => query}), do: {"web_search", query}
 
   defp summarize_tool_use("TodoWrite", %{"todos" => todos}) when is_list(todos) do
     content =
