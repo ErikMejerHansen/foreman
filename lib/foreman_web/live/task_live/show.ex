@@ -128,6 +128,16 @@ defmodule ForemanWeb.TaskLive.Show do
     end
   end
 
+  def handle_event("open_terminal", _params, socket) do
+    worktree_path = socket.assigns.task.worktree_path
+
+    if worktree_path do
+      System.cmd("open", ["-a", "Terminal", worktree_path])
+    end
+
+    {:noreply, socket}
+  end
+
   @impl true
   def handle_info({:new_message, message}, socket) do
     messages = socket.assigns.messages ++ [message]
@@ -218,6 +228,13 @@ defmodule ForemanWeb.TaskLive.Show do
                   title={"Copy worktree path: #{@task.worktree_path}"}
                 >
                   <.icon name="hero-document-duplicate" class="w-3.5 h-3.5" />
+                </button>
+                <button
+                  class="text-base-content/40 hover:text-base-content hover:bg-base-200 p-0.5 rounded transition-colors"
+                  phx-click="open_terminal"
+                  title="Open Terminal at worktree"
+                >
+                  <.icon name="hero-command-line" class="w-3.5 h-3.5" />
                 </button>
               <% end %>
             </span>
