@@ -161,6 +161,7 @@ defmodule Foreman.Tasks do
       |> Repo.update()
 
     broadcast_project(task.project_id, {:task_updated, task})
+    broadcast_task(task.id, {:status_changed, "todo"})
     {:ok, task}
   end
 
