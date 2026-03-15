@@ -26,6 +26,7 @@ defmodule ForemanWeb.TaskLive.Show do
      |> assign(:messages, messages)
      |> assign(:diff, diff)
      |> assign(:message_input, "")
+     |> assign(:pending_images, [])
      |> assign(:page_title, task.title)
      |> assign(:merge_error, nil)
      |> assign(:current_todos, current_todos)}
@@ -34,21 +35,23 @@ defmodule ForemanWeb.TaskLive.Show do
   @impl true
   def handle_event("send_message", %{"message" => message}, socket) when message != "" do
     task = socket.assigns.task
+    images = socket.assigns.pending_images
 
     # Always persist the user message first so it appears in chat
     Chat.create_message(%{
       "task_id" => task.id,
       "role" => "user",
-      "content" => message
+      "content" => message,
+      "images" => images
     })
 
     result =
       case task.status do
         "in_progress" ->
-          Tasks.send_message_to_agent(task, message)
+          Tasks.send_message_to_agent(task, message, images)
 
         "review" ->
-          Tasks.send_feedback(task, message)
+          Tasks.send_feedback(task, message, images)
 
         _ ->
           :ok
@@ -60,7 +63,11 @@ defmodule ForemanWeb.TaskLive.Show do
         _ -> socket
       end
 
-    {:noreply, assign(socket, :message_input, "")}
+    {:noreply,
+     socket
+     |> assign(:message_input, "")
+     |> assign(:pending_images, [])
+     |> push_event("clear_images", %{})}
   end
 
   @impl true
@@ -71,6 +78,18 @@ defmodule ForemanWeb.TaskLive.Show do
   @impl true
   def handle_event("update_message_input", %{"message" => message}, socket) do
     {:noreply, assign(socket, :message_input, message)}
+  end
+
+  @impl true
+  def handle_event("paste_image", %{"data" => data, "media_type" => media_type}, socket) do
+    image = %{"data" => data, "media_type" => media_type}
+    {:noreply, assign(socket, :pending_images, socket.assigns.pending_images ++ [image])}
+  end
+
+  @impl true
+  def handle_event("remove_image", %{"index" => index}, socket) do
+    images = List.delete_at(socket.assigns.pending_images, index)
+    {:noreply, assign(socket, :pending_images, images)}
   end
 
   @impl true
@@ -367,6 +386,13 @@ defmodule ForemanWeb.TaskLive.Show do
                     <time class="font-normal normal-case tracking-normal" phx-hook="LocalTime" id={"time-#{message.id}"} datetime={format_time(message.inserted_at)}>{format_time(message.inserted_at)}</time>
                   </div>
                   <div class="whitespace-pre-wrap break-words">{message.content}</div>
+                  <%= if message.images != [] do %>
+                    <div class="flex flex-wrap gap-2 mt-2">
+                      <%= for image <- message.images do %>
+                        <img src={"data:#{image["media_type"]};base64,#{image["data"]}"} class="max-h-48 rounded border border-base-300" />
+                      <% end %>
+                    </div>
+                  <% end %>
                 </div>
               <% end %>
               <% end %>
@@ -394,6 +420,7 @@ defmodule ForemanWeb.TaskLive.Show do
           <%!-- Chat Input --%>
           <%= if can_chat?(@task.status) do %>
             <div class="p-4 border-t border-base-300 bg-base-100">
+              <div id="task-images-container" phx-update="ignore" class="flex flex-wrap gap-2 mb-2"></div>
               <form phx-submit="send_message" phx-change="update_message_input" class="flex gap-2">
                 <input
                   type="text"
@@ -402,6 +429,8 @@ defmodule ForemanWeb.TaskLive.Show do
                   class="flex-1 rounded border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary px-3 py-2"
                   placeholder="Send a message to the agent..."
                   autocomplete="off"
+                  phx-hook="ImagePaste"
+                  id="chat-input"
                 />
                 <button
                   type="submit"

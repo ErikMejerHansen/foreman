@@ -10,6 +10,7 @@ defmodule Foreman.Chat.Message do
   schema "messages" do
     field :role, :string
     field :content, :string
+    field :images, {:array, :map}, default: []
 
     belongs_to :task, Foreman.Tasks.Task
 
@@ -18,7 +19,7 @@ defmodule Foreman.Chat.Message do
 
   def changeset(message, attrs) do
     message
-    |> cast(attrs, [:role, :content, :task_id])
+    |> cast(attrs, [:role, :content, :task_id, :images])
     |> validate_required([:role, :content, :task_id])
     |> validate_inclusion(:role, @roles)
   end

@@ -255,7 +255,7 @@ defmodule Foreman.Tasks do
     :ok
   end
 
-  def send_feedback(%Task{status: "review"} = task, message) do
+  def send_feedback(%Task{status: "review"} = task, message, images \\ []) do
     # Move task back to in_progress
     {:ok, task} =
       task
@@ -277,6 +277,7 @@ defmodule Foreman.Tasks do
           task_id: task.id,
           worktree_path: task.worktree_path,
           prompt: message,
+          images: images,
           session_id: task.session_id,
           skip_chat_message: true,
           allowed_tools: project.allowed_tools
@@ -284,16 +285,16 @@ defmodule Foreman.Tasks do
 
       pid ->
         # Send feedback to the running agent via stdin
-        Agent.Runner.send_message(pid, message)
+        Agent.Runner.send_message(pid, message, images)
     end
 
     {:ok, task}
   end
 
-  def send_message_to_agent(%Task{status: "in_progress"} = task, message) do
+  def send_message_to_agent(%Task{status: "in_progress"} = task, message, images \\ []) do
     case Agent.Supervisor.find_runner(task.id) do
       nil -> {:error, "Agent not running"}
-      pid -> Agent.Runner.send_message(pid, message)
+      pid -> Agent.Runner.send_message(pid, message, images)
     end
   end
 
