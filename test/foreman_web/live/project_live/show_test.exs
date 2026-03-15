@@ -89,7 +89,7 @@ defmodule ForemanWeb.ProjectLive.ShowTest do
       assert render(view) =~ "My New Task"
     end
 
-    test "form title field retains value after change event", %{conn: conn} do
+    test "modal stays open when a change_task event fires", %{conn: conn} do
       project = create_project()
       {:ok, view, _html} = live(conn, ~p"/projects/#{project.id}/tasks/new")
 
