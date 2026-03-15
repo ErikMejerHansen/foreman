@@ -149,6 +149,14 @@ defmodule Foreman.TasksTest do
       assert is_nil(updated.session_id)
     end
 
+    test "broadcasts status_changed to the task channel" do
+      project = create_project()
+      task = create_task_with_status(project.id, "done")
+      Tasks.subscribe_task(task.id)
+      Tasks.move_to_todo(task)
+      assert_receive {:status_changed, "todo"}
+    end
+
     test "returns an error when task is not in done status" do
       project = create_project()
       task = create_task_with_status(project.id, "review")
