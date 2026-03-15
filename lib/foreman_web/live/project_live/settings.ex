@@ -93,6 +93,18 @@ defmodule ForemanWeb.ProjectLive.Settings do
                 required
               />
             </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Run Commands</label>
+              <p class="text-xs text-base-content/50 mb-1.5">
+                Shell commands to start the project for review. Runs in a new Terminal window at the task's worktree path.
+              </p>
+              <textarea
+                name="project[run_commands]"
+                rows="3"
+                class="block w-full rounded-lg border border-base-content/20 bg-base-200/50 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/50"
+                placeholder="mix phx.server"
+              >{Ecto.Changeset.get_field(@changeset, :run_commands)}</textarea>
+            </div>
           </div>
         </div>
 
