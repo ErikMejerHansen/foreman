@@ -228,6 +228,8 @@ defmodule Foreman.Tasks do
     cost = metadata[:total_cost_usd] || 0.0
     input_tokens = metadata[:total_input_tokens] || 0
     output_tokens = metadata[:total_output_tokens] || 0
+    cache_creation = metadata[:cache_creation_input_tokens] || 0
+    cache_read = metadata[:cache_read_input_tokens] || 0
     turns = metadata[:num_turns] || 0
     duration = metadata[:duration_ms] || 0
 
@@ -238,6 +240,10 @@ defmodule Foreman.Tasks do
           total_cost_usd: fragment("COALESCE(total_cost_usd, 0.0) + ?", ^cost),
           total_input_tokens: fragment("COALESCE(total_input_tokens, 0) + ?", ^input_tokens),
           total_output_tokens: fragment("COALESCE(total_output_tokens, 0) + ?", ^output_tokens),
+          cache_creation_input_tokens:
+            fragment("COALESCE(cache_creation_input_tokens, 0) + ?", ^cache_creation),
+          cache_read_input_tokens:
+            fragment("COALESCE(cache_read_input_tokens, 0) + ?", ^cache_read),
           num_turns: fragment("COALESCE(num_turns, 0) + ?", ^turns),
           duration_ms: fragment("COALESCE(duration_ms, 0) + ?", ^duration)
         ]
