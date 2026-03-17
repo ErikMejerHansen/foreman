@@ -14,6 +14,7 @@ defmodule Foreman.Projects.Project do
     field :repo_path, :string
     field :allowed_tools, {:array, :string}, default: @all_tools
     field :run_commands, :string
+    field :skip_permissions, :boolean, default: false
 
     has_many :tasks, Foreman.Tasks.Task
 
@@ -22,7 +23,7 @@ defmodule Foreman.Projects.Project do
 
   def changeset(project, attrs) do
     project
-    |> cast(attrs, [:name, :repo_path, :allowed_tools, :run_commands])
+    |> cast(attrs, [:name, :repo_path, :allowed_tools, :run_commands, :skip_permissions])
     |> validate_required([:name, :repo_path])
   end
 end

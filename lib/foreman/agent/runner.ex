@@ -3,7 +3,7 @@ defmodule Foreman.Agent.Runner do
   require Logger
 
   defstruct [:task_id, :port, :session_id, :buffer, :worktree_path, :allowed_tools,
-             seen_uuids: MapSet.new()]
+             :skip_permissions, seen_uuids: MapSet.new()]
 
   def start_link(args) do
     GenServer.start_link(__MODULE__, args,
@@ -27,6 +27,7 @@ defmodule Foreman.Agent.Runner do
       worktree_path: worktree_path,
       session_id: Map.get(args, :session_id),
       allowed_tools: allowed_tools,
+      skip_permissions: Map.get(args, :skip_permissions, false),
       buffer: ""
     }
 
@@ -225,6 +226,13 @@ defmodule Foreman.Agent.Runner do
         "--allowedTools",
         tools_str
       ]
+
+    args =
+      if state.skip_permissions do
+        args ++ ["--dangerously-skip-permissions"]
+      else
+        args
+      end
 
     # Add --resume if we have a session_id from a previous run
     args =
