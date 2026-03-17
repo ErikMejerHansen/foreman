@@ -392,7 +392,9 @@ defmodule ForemanWeb.ProjectLive.Stats do
           </.link>
           <h1 class="text-xl font-bold">Statistics</h1>
         </div>
-        <div class="flex items-center gap-1 bg-base-200 rounded-lg p-1">
+        <div class="flex items-center gap-4">
+          <Layouts.theme_toggle />
+          <div class="flex items-center gap-1 bg-base-200 rounded-lg p-1">
           <button
             phx-click="set_view"
             phx-value-view="table"
@@ -407,6 +409,7 @@ defmodule ForemanWeb.ProjectLive.Stats do
           >
             Charts
           </button>
+          </div>
         </div>
       </div>
 

@@ -71,12 +71,15 @@ defmodule ForemanWeb.ProjectLive.Index do
     <div class="max-w-4xl mx-auto py-8">
       <div class="flex justify-between items-center mb-8">
         <h1 class="text-2xl font-bold">Foreman</h1>
-        <.link
-          patch={~p"/projects/new"}
-          class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-        >
-          New Project
-        </.link>
+        <div class="flex items-center gap-4">
+          <Layouts.theme_toggle />
+          <.link
+            patch={~p"/projects/new"}
+            class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            New Project
+          </.link>
+        </div>
       </div>
 
       <%= if @changeset do %>

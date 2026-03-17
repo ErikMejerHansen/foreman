@@ -221,6 +221,7 @@ defmodule ForemanWeb.ProjectLive.Show do
           <span class="text-sm text-base-content/60 font-mono">{@project.repo_path}</span>
         </div>
         <div class="flex items-center gap-4">
+          <Layouts.theme_toggle />
           <.link
             navigate={~p"/projects/#{@project.id}/stats"}
             class="text-base-content/60 hover:text-base-content"

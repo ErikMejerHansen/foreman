@@ -243,7 +243,7 @@ defmodule ForemanWeb.TaskLive.Show do
       <Layouts.flash_group flash={@flash} />
 
       <%!-- Header --%>
-      <div class="bg-base-100 border-b border-base-300 px-6 py-4">
+      <div class="bg-base-100 border-b border-base-300 px-6 py-4 flex justify-between items-center">
         <div class="flex items-center gap-4">
           <.link
             navigate={~p"/projects/#{@project.id}"}
@@ -294,6 +294,7 @@ defmodule ForemanWeb.TaskLive.Show do
             </span>
           <% end %>
         </div>
+        <Layouts.theme_toggle />
       </div>
 
       <div class="flex-1 flex overflow-hidden">
