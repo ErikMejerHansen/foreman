@@ -110,6 +110,37 @@ defmodule ForemanWeb.ProjectLive.Settings do
           </div>
         </div>
 
+        <%!-- Permissions --%>
+        <div class="bg-base-100 rounded-xl border border-amber-500/30 divide-y divide-base-content/10">
+          <div class="px-6 py-4">
+            <h2 class="font-semibold">Permissions</h2>
+          </div>
+          <div class="px-6 py-5">
+            <label class="flex items-start gap-4 cursor-pointer">
+              <input
+                type="hidden"
+                name="project[skip_permissions]"
+                value="false"
+              />
+              <input
+                type="checkbox"
+                name="project[skip_permissions]"
+                value="true"
+                checked={Ecto.Changeset.get_field(@changeset, :skip_permissions)}
+                class="mt-0.5 rounded border-base-300 text-amber-500 focus:ring-amber-500 shrink-0"
+              />
+              <div>
+                <span class="text-sm font-medium">Skip permission prompts</span>
+                <p class="text-xs text-base-content/60 mt-1">
+                  Passes <code class="font-mono bg-base-200 px-1 rounded">--dangerously-skip-permissions</code> to the Claude CLI.
+                  The agent will approve all tool calls automatically without asking for confirmation.
+                  Only enable this if you trust the agent's judgment on this project — it can run arbitrary shell commands, edit files, and make network requests without prompting you first.
+                </p>
+              </div>
+            </label>
+          </div>
+        </div>
+
         <%!-- Allowed Tools --%>
         <div class="bg-base-100 rounded-xl border border-base-content/15 divide-y divide-base-content/10">
           <div class="px-6 py-4">
