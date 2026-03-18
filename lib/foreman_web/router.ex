@@ -22,6 +22,7 @@ defmodule ForemanWeb.Router do
     live "/projects/new", ProjectLive.Index, :new
     live "/projects/:id", ProjectLive.Show, :show
     live "/projects/:id/tasks/new", ProjectLive.Show, :new_task
+    live "/stats", ProjectLive.GlobalStats, :show
     live "/projects/:id/stats", ProjectLive.Stats, :show
     live "/projects/:id/settings", ProjectLive.Settings, :show
     live "/projects/:project_id/tasks/:id", TaskLive.Show, :show

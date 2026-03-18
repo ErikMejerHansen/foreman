@@ -74,6 +74,13 @@ defmodule ForemanWeb.ProjectLive.Index do
         <div class="flex items-center gap-4">
           <Layouts.theme_toggle />
           <.link
+            navigate={~p"/stats"}
+            class="text-base-content/60 hover:text-base-content"
+            title="Global Stats"
+          >
+            <.icon name="hero-chart-bar-square" class="size-5" />
+          </.link>
+          <.link
             patch={~p"/projects/new"}
             class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
           >
