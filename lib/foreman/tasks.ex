@@ -13,6 +13,10 @@ defmodule Foreman.Tasks do
     )
   end
 
+  def list_all_tasks do
+    Repo.all(from t in Task, order_by: [asc: t.inserted_at], preload: :project)
+  end
+
   def get_task!(id) do
     Repo.get!(Task, id) |> Repo.preload(:project)
   end
