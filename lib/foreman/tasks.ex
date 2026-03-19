@@ -98,7 +98,8 @@ defmodule Foreman.Tasks do
            session_id: task.session_id,
            skip_chat_message: skip_chat_message,
            allowed_tools: project.allowed_tools,
-           skip_permissions: project.skip_permissions
+           skip_permissions: project.skip_permissions,
+           chrome_url: project.chrome_url
          }) do
       {:ok, _pid} ->
         :ok
