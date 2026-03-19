@@ -138,8 +138,13 @@ defmodule Foreman.Tasks do
     # Use spawn to avoid deadlock when called from within the runner itself
     spawn(fn -> Agent.Supervisor.stop_runner(task.id) end)
 
-    with :ok <- Git.rebase_from_main(task.worktree_path),
-         :ok <- Git.merge_to_main(project.repo_path, task.branch_name),
+    # Rebase is best-effort — if it fails, proceed with a direct merge
+    case Git.rebase_from_main(task.worktree_path) do
+      :ok -> :ok
+      {:error, reason} -> Logger.warning("Rebase failed, attempting direct merge: #{reason}")
+    end
+
+    with :ok <- Git.merge_to_main(project.repo_path, task.branch_name),
          :ok <- Git.remove_worktree(project.repo_path, task.worktree_path),
          :ok <- Git.delete_branch(project.repo_path, task.branch_name) do
       {:ok, task} =
