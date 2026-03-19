@@ -107,6 +107,21 @@ defmodule ForemanWeb.ProjectLive.Settings do
                 placeholder="mix phx.server"
               >{Ecto.Changeset.get_field(@changeset, :run_commands)}</textarea>
             </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Chrome DevTools URL</label>
+              <p class="text-xs text-base-content/50 mb-1.5">
+                WebSocket URL of a running Chrome instance with remote debugging enabled.
+                Passes <code class="font-mono bg-base-200 px-1 rounded">--cdp-url</code> to the Claude CLI so the agent can interact with the browser.
+                Start Chrome with <code class="font-mono bg-base-200 px-1 rounded">--remote-debugging-port=9222</code> and enter <code class="font-mono bg-base-200 px-1 rounded">ws://localhost:9222</code> here.
+              </p>
+              <input
+                type="text"
+                name="project[chrome_url]"
+                value={Ecto.Changeset.get_field(@changeset, :chrome_url)}
+                class="block w-full rounded-lg border border-base-content/20 bg-base-200/50 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/50"
+                placeholder="ws://localhost:9222"
+              />
+            </div>
           </div>
         </div>
 

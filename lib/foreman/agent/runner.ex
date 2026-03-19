@@ -3,7 +3,7 @@ defmodule Foreman.Agent.Runner do
   require Logger
 
   defstruct [:task_id, :port, :session_id, :buffer, :worktree_path, :allowed_tools,
-             :skip_permissions, seen_uuids: MapSet.new()]
+             :skip_permissions, :chrome_url, seen_uuids: MapSet.new()]
 
   def start_link(args) do
     GenServer.start_link(__MODULE__, args,
@@ -28,6 +28,7 @@ defmodule Foreman.Agent.Runner do
       session_id: Map.get(args, :session_id),
       allowed_tools: allowed_tools,
       skip_permissions: Map.get(args, :skip_permissions, false),
+      chrome_url: Map.get(args, :chrome_url),
       buffer: ""
     }
 
@@ -230,6 +231,13 @@ defmodule Foreman.Agent.Runner do
     args =
       if state.skip_permissions do
         args ++ ["--dangerously-skip-permissions"]
+      else
+        args
+      end
+
+    args =
+      if state.chrome_url do
+        args ++ ["--cdp-url", state.chrome_url]
       else
         args
       end
