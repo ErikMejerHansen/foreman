@@ -237,7 +237,7 @@ defmodule Foreman.Agent.Runner do
 
     args =
       if state.chrome_url do
-        args ++ ["--cdp-url", state.chrome_url]
+        args ++ ["--chrome"]
       else
         args
       end
