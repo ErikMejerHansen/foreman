@@ -254,31 +254,22 @@ defmodule Foreman.Tasks do
   end
 
   def update_result_metadata(task_id, metadata) do
-    cost = metadata[:total_cost_usd] || 0.0
-    input_tokens = metadata[:total_input_tokens] || 0
-    output_tokens = metadata[:total_output_tokens] || 0
-    cache_creation = metadata[:cache_creation_input_tokens] || 0
-    cache_read = metadata[:cache_read_input_tokens] || 0
-    turns = metadata[:num_turns] || 0
-    duration = metadata[:duration_ms] || 0
-
-    from(t in Task,
-      where: t.id == ^task_id,
-      update: [
-        set: [
-          total_cost_usd: fragment("COALESCE(total_cost_usd, 0.0) + ?", ^cost),
-          total_input_tokens: fragment("COALESCE(total_input_tokens, 0) + ?", ^input_tokens),
-          total_output_tokens: fragment("COALESCE(total_output_tokens, 0) + ?", ^output_tokens),
-          cache_creation_input_tokens:
-            fragment("COALESCE(cache_creation_input_tokens, 0) + ?", ^cache_creation),
-          cache_read_input_tokens:
-            fragment("COALESCE(cache_read_input_tokens, 0) + ?", ^cache_read),
-          num_turns: fragment("COALESCE(num_turns, 0) + ?", ^turns),
-          duration_ms: fragment("COALESCE(duration_ms, 0) + ?", ^duration)
-        ]
+    updates =
+      [
+        total_cost_usd: metadata[:total_cost_usd],
+        total_input_tokens: metadata[:total_input_tokens],
+        total_output_tokens: metadata[:total_output_tokens],
+        cache_creation_input_tokens: metadata[:cache_creation_input_tokens],
+        cache_read_input_tokens: metadata[:cache_read_input_tokens],
+        num_turns: metadata[:num_turns],
+        duration_ms: metadata[:duration_ms]
       ]
-    )
-    |> Repo.update_all([])
+      |> Enum.reject(fn {_k, v} -> is_nil(v) end)
+
+    if updates != [] do
+      from(t in Task, where: t.id == ^task_id)
+      |> Repo.update_all(set: updates)
+    end
 
     :ok
   end
