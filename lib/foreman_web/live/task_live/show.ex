@@ -147,6 +147,22 @@ defmodule ForemanWeb.TaskLive.Show do
     end
   end
 
+  def handle_event("rebase_on_main", _params, socket) do
+    task = socket.assigns.task
+    project = socket.assigns.project
+
+    case Git.rebase_from_main(task.worktree_path) do
+      :ok ->
+        {:noreply,
+         socket
+         |> assign(:merge_error, nil)
+         |> assign(:diff, load_diff(project, task))}
+
+      {:error, reason} ->
+        {:noreply, assign(socket, :merge_error, reason)}
+    end
+  end
+
   def handle_event("open_terminal", _params, socket) do
     worktree_path = socket.assigns.task.worktree_path
 
@@ -470,6 +486,13 @@ defmodule ForemanWeb.TaskLive.Show do
                       <.icon name="hero-play" class="w-4 h-4" /> Run
                     </button>
                   <% end %>
+                  <button
+                    phx-click="rebase_on_main"
+                    class="bg-base-300 text-base-content px-3 py-2 rounded hover:bg-base-400 text-sm flex items-center gap-1.5"
+                    title="Rebase branch onto latest main"
+                  >
+                    <.icon name="hero-arrow-path" class="w-4 h-4" /> Rebase
+                  </button>
                   <button
                     phx-click="approve_and_merge"
                     class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm"
