@@ -156,10 +156,14 @@ defmodule ForemanWeb.TaskLive.Show do
         {:noreply,
          socket
          |> assign(:merge_error, nil)
-         |> assign(:diff, load_diff(project, task))}
+         |> assign(:diff, load_diff(project, task))
+         |> put_flash(:info, "Rebased onto main successfully")}
 
       {:error, reason} ->
-        {:noreply, assign(socket, :merge_error, reason)}
+        {:noreply,
+         socket
+         |> assign(:merge_error, reason)
+         |> put_flash(:error, "Rebase failed")}
     end
   end
 
