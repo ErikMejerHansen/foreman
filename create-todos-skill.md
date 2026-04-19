@@ -38,6 +38,14 @@ curl -s -X POST http://localhost:4000/api/projects/PROJECT_ID/tasks \
   }'
 ```
 
+**Request body fields** (nested under `"task"`):
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `title` | yes | Short, specific task title |
+| `instructions` | yes | Full task brief for the agent |
+| `images` | no | Array of base64 image maps to attach |
+
 A successful response:
 ```json
 {"data": {"id": "...", "title": "...", "status": "todo", "created_via_api": true}}
