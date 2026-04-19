@@ -31,7 +31,9 @@ defmodule ForemanWeb.ProjectLive.Show do
      |> assign(:edit_task_changeset, nil)
      |> assign(:edit_task_images, [])
      |> assign(:show_all_done, false)
-     |> assign(:other_review_projects, other_review_projects)}
+     |> assign(:other_review_projects, other_review_projects)
+     |> assign(:search_query, "")
+     |> assign(:status_filter, "all")}
   end
 
   @impl true
@@ -126,6 +128,14 @@ defmodule ForemanWeb.ProjectLive.Show do
   @impl true
   def handle_event("toggle_show_all_done", _params, socket) do
     {:noreply, update(socket, :show_all_done, &(!&1))}
+  end
+
+  @impl true
+  def handle_event("update_filters", params, socket) do
+    {:noreply,
+     socket
+     |> assign(:search_query, Map.get(params, "search", ""))
+     |> assign(:status_filter, Map.get(params, "status", "all"))}
   end
 
   @impl true
@@ -249,9 +259,15 @@ defmodule ForemanWeb.ProjectLive.Show do
     Enum.filter(tasks, &(&1.status == status))
   end
 
-  defp kanban_columns(_project) do
-    ~w(todo in_progress review done)
+  defp filter_tasks(tasks, ""), do: tasks
+
+  defp filter_tasks(tasks, query) do
+    q = String.downcase(query)
+    Enum.filter(tasks, &String.contains?(String.downcase(&1.title), q))
   end
+
+  defp visible_columns("all"), do: ~w(todo in_progress review done)
+  defp visible_columns(status), do: [status]
 
   defp status_color("todo"), do: "bg-base-200 border-base-300"
   defp status_color("in_progress"), do: "bg-info/10 border-info/30"
@@ -285,6 +301,23 @@ defmodule ForemanWeb.ProjectLive.Show do
           <span class="text-sm text-base-content/60 font-mono">{@project.repo_path}</span>
         </div>
         <div class="flex items-center gap-4">
+          <form phx-change="update_filters" class="flex items-center gap-2">
+            <input
+              type="text"
+              name="search"
+              value={@search_query}
+              placeholder="Search tasks..."
+              phx-debounce="150"
+              class="rounded border border-base-300 bg-base-200 px-3 py-1.5 text-sm focus:outline-none focus:border-primary w-44"
+            />
+            <select name="status" class="rounded border border-base-300 bg-base-200 px-2 py-1.5 text-sm focus:outline-none focus:border-primary">
+              <option value="all" selected={@status_filter == "all"}>All columns</option>
+              <option value="todo" selected={@status_filter == "todo"}>To Do</option>
+              <option value="in_progress" selected={@status_filter == "in_progress"}>In Progress</option>
+              <option value="review" selected={@status_filter == "review"}>Review</option>
+              <option value="done" selected={@status_filter == "done"}>Done</option>
+            </select>
+          </form>
           <Layouts.theme_toggle />
           <.link
             navigate={~p"/projects/#{@project.id}/stats"}
@@ -433,8 +466,8 @@ defmodule ForemanWeb.ProjectLive.Show do
       <%!-- Kanban Board --%>
       <div class="flex-1 overflow-x-auto p-6">
         <div class="flex gap-4 h-full min-w-max">
-          <%= for status <- kanban_columns(@project) do %>
-            <% all_status_tasks = tasks_by_status(@tasks, status) %>
+          <%= for status <- visible_columns(@status_filter) do %>
+            <% all_status_tasks = tasks_by_status(filter_tasks(@tasks, @search_query), status) %>
             <% displayed_tasks =
               if status == "done" && !@show_all_done,
                 do: Enum.take(all_status_tasks, -8),
