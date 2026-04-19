@@ -21,6 +21,8 @@ Bad: "Build the API and update the UI" (too broad, two concerns)
 
 ## Steps
 
+The Foreman server runs on `http://localhost:4000`.
+
 1. Find the `PROJECT_ID` from the Foreman URL (`/projects/PROJECT_ID`) or ask the user
 2. Plan the tasks — break the work into small, independent units
 3. Create each task via the API:
