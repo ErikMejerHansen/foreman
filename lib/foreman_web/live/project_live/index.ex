@@ -155,8 +155,8 @@ defmodule ForemanWeb.ProjectLive.Index do
                   <% end %>
                 </div>
                 <p class="text-sm text-base-content/60 mt-1 font-mono">{project.repo_path}</p>
-                <%= if project.total_cost_usd && Decimal.compare(project.total_cost_usd, 0) != :eq do %>
-                  <p class="text-sm text-base-content/50 mt-1">${:erlang.float_to_binary(Decimal.to_float(project.total_cost_usd), [{:decimals, 4}])}</p>
+                <%= if project.total_cost_usd && project.total_cost_usd > 0 do %>
+                  <p class="text-sm text-base-content/50 mt-1">${:erlang.float_to_binary(project.total_cost_usd * 1.0, [{:decimals, 4}])}</p>
                 <% end %>
               </.link>
               <div class="flex items-center gap-3 ml-4">
