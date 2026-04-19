@@ -41,6 +41,24 @@ defmodule Foreman.Tasks do
     Task.changeset(task, attrs)
   end
 
+  def update_task(%Task{status: status} = task, attrs) when status in ["todo", "failed"] do
+    result =
+      task
+      |> Task.changeset(Map.merge(attrs, %{"created_via_api" => false}))
+      |> Repo.update()
+
+    case result do
+      {:ok, task} ->
+        broadcast_project(task.project_id, {:task_updated, task})
+        {:ok, task}
+
+      error ->
+        error
+    end
+  end
+
+  def update_task(_task, _attrs), do: {:error, "Can only edit tasks in todo or failed status"}
+
   def move_to_in_progress(%Task{status: status} = task)
       when status in ["todo", "review", "failed"] do
     project = Foreman.Projects.get_project!(task.project_id)
