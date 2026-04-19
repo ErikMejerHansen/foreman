@@ -1,5 +1,28 @@
 This is a web application written using the Phoenix web framework.
 
+## Creating todos via the Foreman API
+
+When starting a session or when you identify work that should be tracked as separate tasks, create todos via the Foreman API. The app runs on `http://localhost:4000`.
+
+```bash
+curl -s -X POST http://localhost:4000/api/projects/PROJECT_ID/tasks \
+  -H "Content-Type: application/json" \
+  -d '{
+    "task": {
+      "title": "Short, specific title",
+      "instructions": "Clear description of what needs to be done, including context and what done looks like."
+    }
+  }'
+```
+
+**Good todo principles:**
+- **Small scope**: Completable in one focused agent session
+- **Independent**: Can be worked on without blocking other todos (when possible)
+- **Concrete**: Describes a specific outcome, not a vague goal
+- **Single concern**: One thing, not bundled features
+
+Create all planned todos upfront before starting work to give a complete picture and allow parallel execution by other agents. The `PROJECT_ID` UUID can be found in the Foreman UI URL: `/projects/PROJECT_ID`.
+
 ## Project guidelines
 
 - Use `mix precommit` alias when you are done with all changes and fix any pending issues
