@@ -5,7 +5,7 @@ defmodule Foreman.Projects.Project do
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
 
-  @all_tools ~w(Bash Read Edit MultiEdit Write Glob Grep TodoWrite TodoRead WebFetch WebSearch)
+  @all_tools ~w(Bash Read Edit MultiEdit Write Glob Grep TodoWrite TodoRead WebFetch WebSearch Skill)
 
   def all_tools, do: @all_tools
 
