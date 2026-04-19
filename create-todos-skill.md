@@ -1,10 +1,13 @@
+---
+name: create-todos
+description: Break down planned work into tasks and register them in Foreman via the API. Use when the user asks to "create todos", "plan tasks", "add tasks to Foreman", or at the start of a session to plan implementation work.
+disable-model-invocation: true
+allowed-tools: Bash, Read
+---
+
 # Create Todos
 
-Break down your planned work into focused, independent tasks and register them in Foreman via the API.
-
-## When to use
-
-Run this at the start of a session to plan work upfront. Create all todos before starting implementation — this gives a complete picture and allows other agents to pick up parallel work.
+Break down planned work into focused, independent tasks and register them in Foreman via the API.
 
 ## What makes a good todo
 
@@ -16,9 +19,11 @@ Run this at the start of a session to plan work upfront. Create all todos before
 Good: "Add `created_via_api` boolean field to tasks table migration"
 Bad: "Build the API and update the UI" (too broad, two concerns)
 
-## How to create a todo
+## Steps
 
-The Foreman server runs on `http://localhost:4000`. Find the `PROJECT_ID` from the URL (`/projects/PROJECT_ID`).
+1. Find the `PROJECT_ID` from the Foreman URL (`/projects/PROJECT_ID`) or ask the user
+2. Plan the tasks — break the work into small, independent units
+3. Create each task via the API:
 
 ```bash
 curl -s -X POST http://localhost:4000/api/projects/PROJECT_ID/tasks \
@@ -43,3 +48,7 @@ Write instructions as if briefing a capable engineer with no prior context:
 - Describe the current state and what needs to change
 - List constraints or conventions to follow (check AGENTS.md or CLAUDE.md in the project)
 - Define what "done" looks like
+
+## After creating todos
+
+Report back a summary of what was created — titles and a one-line rationale for how the work was split up.
