@@ -27,6 +27,9 @@ defmodule ForemanWeb.ProjectLive.Show do
      |> assign(:page_title, project.name)
      |> assign(:task_changeset, nil)
      |> assign(:task_images, [])
+     |> assign(:edit_task_id, nil)
+     |> assign(:edit_task_changeset, nil)
+     |> assign(:edit_task_images, [])
      |> assign(:show_all_done, false)
      |> assign(:other_review_projects, other_review_projects)}
   end
@@ -128,6 +131,67 @@ defmodule ForemanWeb.ProjectLive.Show do
   @impl true
   def handle_event("cancel_new_task", _params, socket) do
     {:noreply, push_patch(socket, to: ~p"/projects/#{socket.assigns.project.id}")}
+  end
+
+  @impl true
+  def handle_event("edit_task", %{"id" => task_id}, socket) do
+    task = Tasks.get_task!(task_id)
+    changeset = Tasks.change_task(task, %{})
+
+    {:noreply,
+     socket
+     |> assign(:edit_task_id, task_id)
+     |> assign(:edit_task_changeset, changeset)
+     |> assign(:edit_task_images, task.images || [])}
+  end
+
+  @impl true
+  def handle_event("change_edit_task", %{"task" => task_params}, socket) do
+    task = Tasks.get_task!(socket.assigns.edit_task_id)
+    changeset = Tasks.change_task(task, task_params)
+    {:noreply, assign(socket, :edit_task_changeset, changeset)}
+  end
+
+  @impl true
+  def handle_event("save_edit_task", %{"task" => task_params}, socket) do
+    task = Tasks.get_task!(socket.assigns.edit_task_id)
+    task_params = Map.put(task_params, "images", socket.assigns.edit_task_images)
+
+    case Tasks.update_task(task, task_params) do
+      {:ok, _task} ->
+        tasks = Tasks.list_tasks_for_project(socket.assigns.project.id)
+
+        {:noreply,
+         socket
+         |> assign(:tasks, tasks)
+         |> assign(:edit_task_id, nil)
+         |> assign(:edit_task_changeset, nil)
+         |> assign(:edit_task_images, [])}
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        {:noreply, assign(socket, :edit_task_changeset, changeset)}
+    end
+  end
+
+  @impl true
+  def handle_event("cancel_edit_task", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:edit_task_id, nil)
+     |> assign(:edit_task_changeset, nil)
+     |> assign(:edit_task_images, [])}
+  end
+
+  @impl true
+  def handle_event("paste_edit_image", %{"data" => data, "media_type" => media_type}, socket) do
+    image = %{"data" => data, "media_type" => media_type}
+    {:noreply, update(socket, :edit_task_images, &(&1 ++ [image]))}
+  end
+
+  @impl true
+  def handle_event("remove_edit_image", %{"index" => index}, socket) do
+    images = List.delete_at(socket.assigns.edit_task_images, index)
+    {:noreply, assign(socket, :edit_task_images, images)}
   end
 
   @impl true
@@ -301,6 +365,71 @@ defmodule ForemanWeb.ProjectLive.Show do
         </div>
       <% end %>
 
+      <%!-- Edit Task Modal --%>
+      <%= if @edit_task_changeset do %>
+        <div
+          class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          phx-click-away="cancel_edit_task"
+        >
+          <div class="bg-base-100 rounded-lg shadow-xl p-6 w-full max-w-lg">
+            <h2 class="text-lg font-semibold mb-4">Edit Task</h2>
+            <.form for={@edit_task_changeset} phx-submit="save_edit_task" phx-change="change_edit_task" class="space-y-4" phx-hook="CmdEnterSubmit" id="edit-task-form">
+              <div>
+                <label class="block text-sm font-medium text-base-content">Title</label>
+                <input
+                  type="text"
+                  name="task[title]"
+                  value={Ecto.Changeset.get_field(@edit_task_changeset, :title) || ""}
+                  class="mt-1 block w-full rounded border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary px-3 py-2"
+                  placeholder="Fix login bug"
+                  required
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-base-content">Instructions</label>
+                <textarea
+                  name="task[instructions]"
+                  rows="6"
+                  id="edit-task-instructions"
+                  phx-hook="ImagePaste"
+                  class="mt-1 block w-full rounded border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary px-3 py-2"
+                  placeholder="Describe what the agent should do... (paste images with ⌘V)"
+                  required
+                >{Ecto.Changeset.get_field(@edit_task_changeset, :instructions) || ""}</textarea>
+                <div id="edit-task-images-container" class="mt-2 flex flex-wrap gap-2">
+                  <%= for {image, index} <- Enum.with_index(@edit_task_images) do %>
+                    <div class="relative">
+                      <img src={"data:#{image["media_type"]};base64,#{image["data"]}"} class="w-16 h-16 object-cover rounded border border-base-300" />
+                      <button
+                        type="button"
+                        phx-click="remove_edit_image"
+                        phx-value-index={index}
+                        class="absolute -top-1 -right-1 bg-error text-white rounded-full w-4 h-4 flex items-center justify-center text-xs leading-none"
+                      >&times;</button>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+              <div class="flex justify-end gap-2">
+                <button
+                  type="button"
+                  phx-click="cancel_edit_task"
+                  class="px-4 py-2 rounded border border-base-300 hover:bg-base-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                >
+                  Save
+                </button>
+              </div>
+            </.form>
+          </div>
+        </div>
+      <% end %>
+
       <%!-- Kanban Board --%>
       <div class="flex-1 overflow-x-auto p-6">
         <div class="flex gap-4 h-full min-w-max">
@@ -342,6 +471,15 @@ defmodule ForemanWeb.ProjectLive.Show do
                     id={"task-#{task.id}"}
                     data-task-id={task.id}
                   >
+                    <%= if task.status in ["todo", "failed"] do %>
+                      <button
+                        phx-click="edit_task"
+                        phx-value-id={task.id}
+                        class="absolute top-2 right-8 opacity-0 group-hover:opacity-100 text-base-content/40 hover:text-primary transition-opacity"
+                      >
+                        <.icon name="hero-pencil-square" class="w-4 h-4" />
+                      </button>
+                    <% end %>
                     <button
                       phx-click="delete_task"
                       phx-value-id={task.id}
