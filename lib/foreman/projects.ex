@@ -7,6 +7,16 @@ defmodule Foreman.Projects do
     Repo.all(from p in Project, order_by: [desc: p.inserted_at])
   end
 
+  def list_projects_with_costs do
+    Repo.all(
+      from p in Project,
+        left_join: t in assoc(p, :tasks),
+        group_by: p.id,
+        select: %{p | total_cost_usd: coalesce(sum(t.total_cost_usd), 0)},
+        order_by: [desc: p.inserted_at]
+    )
+  end
+
   def get_project!(id) do
     Repo.get!(Project, id)
   end

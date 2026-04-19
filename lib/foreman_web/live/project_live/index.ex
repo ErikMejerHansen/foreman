@@ -6,13 +6,16 @@ defmodule ForemanWeb.ProjectLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
+    projects = Projects.list_projects_with_costs()
+
     if connected?(socket) do
       Foreman.ReviewNotifications.subscribe()
+      Enum.each(projects, &Phoenix.PubSub.subscribe(Foreman.PubSub, "project:#{&1.id}"))
     end
 
     review_project_ids = Foreman.ReviewNotifications.pending_project_ids()
 
-    {:ok, assign(socket, projects: Projects.list_projects(), review_project_ids: review_project_ids)}
+    {:ok, assign(socket, projects: projects, review_project_ids: review_project_ids)}
   end
 
   @impl true
@@ -39,7 +42,7 @@ defmodule ForemanWeb.ProjectLive.Index do
         {:noreply,
          socket
          |> put_flash(:info, "Project created")
-         |> assign(:projects, Projects.list_projects())
+         |> assign(:projects, Projects.list_projects_with_costs())
          |> push_patch(to: ~p"/projects")}
 
       {:error, %Ecto.Changeset{} = changeset} ->
@@ -52,7 +55,7 @@ defmodule ForemanWeb.ProjectLive.Index do
     project = Projects.get_project!(id)
     {:ok, _} = Projects.delete_project(project)
 
-    {:noreply, assign(socket, projects: Projects.list_projects())}
+    {:noreply, assign(socket, projects: Projects.list_projects_with_costs())}
   end
 
   @impl true
@@ -63,6 +66,11 @@ defmodule ForemanWeb.ProjectLive.Index do
   @impl true
   def handle_info({:review_notification_cleared, project_id}, socket) do
     {:noreply, update(socket, :review_project_ids, &List.delete(&1, project_id))}
+  end
+
+  @impl true
+  def handle_info({event, _task}, socket) when event in [:task_created, :task_updated, :task_deleted] do
+    {:noreply, assign(socket, projects: Projects.list_projects_with_costs())}
   end
 
   @impl true
@@ -147,6 +155,9 @@ defmodule ForemanWeb.ProjectLive.Index do
                   <% end %>
                 </div>
                 <p class="text-sm text-base-content/60 mt-1 font-mono">{project.repo_path}</p>
+                <%= if project.total_cost_usd && Decimal.compare(project.total_cost_usd, 0) != :eq do %>
+                  <p class="text-sm text-base-content/50 mt-1">${:erlang.float_to_binary(Decimal.to_float(project.total_cost_usd), [{:decimals, 4}])}</p>
+                <% end %>
               </.link>
               <div class="flex items-center gap-3 ml-4">
                 <.link
