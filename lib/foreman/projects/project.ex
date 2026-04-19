@@ -16,6 +16,7 @@ defmodule Foreman.Projects.Project do
     field :run_commands, :string
     field :skip_permissions, :boolean, default: false
     field :chrome_url, :string
+    field :total_cost_usd, :decimal, virtual: true
 
     has_many :tasks, Foreman.Tasks.Task
 
