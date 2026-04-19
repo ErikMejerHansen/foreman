@@ -29,7 +29,9 @@ defmodule ForemanWeb.TaskLive.Show do
      |> assign(:pending_images, [])
      |> assign(:page_title, task.title)
      |> assign(:merge_error, nil)
-     |> assign(:current_todos, current_todos)}
+     |> assign(:current_todos, current_todos)
+     |> assign(:editing_instructions, false)
+     |> assign(:instructions_input, task.instructions)}
   end
 
   @impl true
@@ -164,6 +166,34 @@ defmodule ForemanWeb.TaskLive.Show do
          socket
          |> assign(:merge_error, reason)
          |> put_flash(:error, "Rebase failed")}
+    end
+  end
+
+  def handle_event("edit_instructions", _params, socket) do
+    {:noreply, assign(socket, :editing_instructions, true)}
+  end
+
+  def handle_event("cancel_edit_instructions", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:editing_instructions, false)
+     |> assign(:instructions_input, socket.assigns.task.instructions)}
+  end
+
+  def handle_event("update_instructions_input", %{"instructions" => instructions}, socket) do
+    {:noreply, assign(socket, :instructions_input, instructions)}
+  end
+
+  def handle_event("save_instructions", _params, socket) do
+    case Tasks.update_instructions(socket.assigns.task, socket.assigns.instructions_input) do
+      {:ok, task} ->
+        {:noreply,
+         socket
+         |> assign(:task, task)
+         |> assign(:editing_instructions, false)}
+
+      {:error, reason} ->
+        {:noreply, put_flash(socket, :error, "#{reason}")}
     end
   end
 
@@ -324,8 +354,41 @@ defmodule ForemanWeb.TaskLive.Show do
           <div class="flex-1 overflow-y-auto p-4 space-y-3" id="chat-messages" phx-hook="ScrollBottom">
             <%!-- Instructions --%>
             <div class="p-4 rounded-lg border border-base-300 bg-base-200 mb-2">
-              <h2 class="text-sm font-semibold text-base-content/70 mb-2">Instructions</h2>
-              <p class="text-sm whitespace-pre-wrap">{@task.instructions}</p>
+              <div class="flex justify-between items-center mb-2">
+                <h2 class="text-sm font-semibold text-base-content/70">Instructions</h2>
+                <%= if !@editing_instructions && @task.status == "todo" do %>
+                  <button
+                    phx-click="edit_instructions"
+                    class="text-xs text-base-content/40 hover:text-base-content/70 flex items-center gap-1"
+                  >
+                    <.icon name="hero-pencil-square" class="w-3.5 h-3.5" /> Edit
+                  </button>
+                <% end %>
+              </div>
+              <%= if @editing_instructions do %>
+                <form phx-submit="save_instructions" phx-change="update_instructions_input">
+                  <textarea
+                    name="instructions"
+                    class="w-full rounded border-base-300 bg-base-100 text-base-content text-sm px-3 py-2 min-h-32 resize-y"
+                    phx-hook="AutoFocus"
+                    id="instructions-textarea"
+                  >{@instructions_input}</textarea>
+                  <div class="flex gap-2 mt-2">
+                    <button type="submit" class="bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 text-sm">
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      phx-click="cancel_edit_instructions"
+                      class="bg-base-300 text-base-content px-3 py-1.5 rounded hover:bg-base-400 text-sm"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              <% else %>
+                <p class="text-sm whitespace-pre-wrap">{@task.instructions}</p>
+              <% end %>
               <%= if @task.images != [] do %>
                 <div class="flex flex-wrap gap-2 mt-2">
                   <%= for image <- @task.images do %>

@@ -59,6 +59,24 @@ defmodule Foreman.Tasks do
 
   def update_task(_task, _attrs), do: {:error, "Can only edit tasks in todo or failed status"}
 
+  def update_instructions(%Task{status: "todo"} = task, instructions) do
+    result =
+      task
+      |> Ecto.Changeset.change(instructions: instructions)
+      |> Repo.update()
+
+    case result do
+      {:ok, task} ->
+        broadcast_project(task.project_id, {:task_updated, task})
+        {:ok, task}
+
+      error ->
+        error
+    end
+  end
+
+  def update_instructions(_task, _instructions), do: {:error, "Can only edit instructions for todo tasks"}
+
   def move_to_in_progress(%Task{status: status} = task)
       when status in ["todo", "review", "failed"] do
     project = Foreman.Projects.get_project!(task.project_id)

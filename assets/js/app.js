@@ -39,6 +39,7 @@ const Hooks = {
   LocalTime: LocalTimeHook,
   ImagePaste: ImagePasteHook,
   Charts: ChartsHook,
+  AutoFocus: { mounted() { this.el.focus() } },
 }
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
