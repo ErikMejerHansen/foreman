@@ -387,7 +387,7 @@ defmodule ForemanWeb.TaskLive.Show do
                   </div>
                 </form>
               <% else %>
-                <p class="text-sm whitespace-pre-wrap">{@task.instructions}</p>
+                <div class="prose prose-sm max-w-none">{markdown_to_html(@task.instructions)}</div>
               <% end %>
               <%= if @task.images != [] do %>
                 <div class="flex flex-wrap gap-2 mt-2">
@@ -635,5 +635,13 @@ defmodule ForemanWeb.TaskLive.Show do
     end)
     |> Enum.join("\n")
     |> Phoenix.HTML.raw()
+  end
+
+  defp markdown_to_html(nil), do: Phoenix.HTML.raw("")
+
+  defp markdown_to_html(markdown) do
+    {:ok, html, _} = Earmark.as_html(markdown)
+    safe = HtmlSanitizeEx.basic_html(html)
+    Phoenix.HTML.raw(safe)
   end
 end
