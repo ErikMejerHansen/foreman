@@ -23,6 +23,7 @@ defmodule Foreman.Tasks.Task do
     field :num_turns, :integer
     field :duration_ms, :integer
     field :images, {:array, :map}, default: []
+    field :created_via_api, :boolean, default: false
 
     belongs_to :project, Foreman.Projects.Project
     has_many :messages, Foreman.Chat.Message
@@ -41,7 +42,8 @@ defmodule Foreman.Tasks.Task do
       :branch_name,
       :worktree_path,
       :session_id,
-      :project_id
+      :project_id,
+      :created_via_api
     ])
     |> validate_required([:title, :instructions, :project_id])
     |> validate_inclusion(:status, @statuses)

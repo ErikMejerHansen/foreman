@@ -336,7 +336,7 @@ defmodule ForemanWeb.ProjectLive.Show do
                       "rounded-lg shadow-sm border p-3 cursor-pointer hover:shadow-md transition-shadow group relative",
                       if(task.status == "failed",
                         do: "bg-error/10 border-error/40",
-                        else: "bg-base-100 border-base-300"
+                        else: if(task.created_via_api, do: "bg-info/5 border-info/30", else: "bg-base-100 border-base-300")
                       )
                     ]}
                     id={"task-#{task.id}"}
@@ -357,6 +357,12 @@ defmodule ForemanWeb.ProjectLive.Show do
                       </p>
                       <%= if task.branch_name do %>
                         <p class="text-xs text-info mt-2 font-mono">{task.branch_name}</p>
+                      <% end %>
+                      <%= if task.created_via_api do %>
+                        <div class="flex items-center gap-1 mt-2">
+                          <.icon name="hero-cpu-chip" class="w-3 h-3 text-info/60" />
+                          <span class="text-xs text-info/60">agent</span>
+                        </div>
                       <% end %>
                     </.link>
                   </div>

@@ -11,6 +11,10 @@ defmodule Foreman.Projects do
     Repo.get!(Project, id)
   end
 
+  def get_project(id) do
+    Repo.get(Project, id)
+  end
+
   def create_project(attrs) do
     %Project{}
     |> Project.changeset(attrs)

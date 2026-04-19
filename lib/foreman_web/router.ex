@@ -28,10 +28,11 @@ defmodule ForemanWeb.Router do
     live "/projects/:project_id/tasks/:id", TaskLive.Show, :show
   end
 
-  # Other scopes may use custom stacks.
-  # scope "/api", ForemanWeb do
-  #   pipe_through :api
-  # end
+  scope "/api", ForemanWeb.API do
+    pipe_through :api
+
+    post "/projects/:project_id/tasks", TaskController, :create
+  end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
   if Application.compile_env(:foreman, :dev_routes) do
